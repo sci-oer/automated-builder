@@ -1,0 +1,6 @@
+course
+.git
+.github
+Dockerfile
+venv
+__pycache__
