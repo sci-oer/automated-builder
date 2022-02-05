@@ -20,10 +20,8 @@ Other interface options:
   -V --version      Show the current version.
   -v --verbose      Show verbose log messages.
   -d --debug        Show debug log messages.
-"""
+""" # noqa E501
 
-from multiprocessing.connection import Client
-from typing import Container
 import docker
 import random
 import string
@@ -45,10 +43,12 @@ from version import __version__
 
 
 # this is the api token that has been built into the base oo-resources container
-API_TOKEN="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"
+
+API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA" # noqa E501
 
 
 _LOGGER = logging.getLogger(__name__)
+
 
 def _make_opts(args):
 
@@ -56,58 +56,70 @@ def _make_opts(args):
     for arg, val in args.items():
         opt = arg.replace('--', '').replace('-', '_')
         opts[opt] = val
-        # if val is not None and arg in _PARSE_ARG:
-            # opt = arg.replace('--', '').replace('-', '_')
-            # opts[opt] = _PARSE_ARG[arg](val)
     return opts
+
 
 def _get_git_version():
     """Check that `git` is accessible and return its version."""
     try:
         return subprocess.check_output(['git', '--version']).strip().decode()
-    except:
+    except FileNotFoundError:
         return None
+
 
 def _gen_version():
     extra = ''
     if _get_git_version() and os.path.isdir('.git'):
         rev_parse = subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode()
-        describe = subprocess.check_output(['git', 'describe', '--always', '--dirty']).strip().decode()
+        describe = subprocess.check_output(['git', 'describe', '--always', '--dirty']).strip().decode()  # noqa: E501
 
         extra = rev_parse[:12]
         extra += '-dirty' if describe.endswith('-dirty') else ''
 
         extra = f' ({extra})'
 
-    return f'liquidctl v{__version__}{extra}'
+    return f'autobuild v{__version__}{extra}'
 
 
-def fetch_latest(client, repository="marshallasch/oo-resources:main", **kwargs):
+def fetch_latest(client, repository, **kwargs):
     client.images.pull(repository)
 
-def start_container(client, volume, image="marshallasch/oo-resources:main", **kwargs):
+
+def start_container(client, volume, image, **kwargs):
     name = f'auto-build-tmp-{generate_random_string()}'
 
     onHost = not check_if_container(client)
-    container = client.containers.run(image, publish_all_ports=onHost, name=name, tty=True, detach=True, volumes=[f'{volume.name}:/course'])
+    container = client.containers.run(image,
+                                      publish_all_ports=onHost,
+                                      name=name,
+                                      tty=True,
+                                      detach=True,
+                                      volumes=[f'{volume.name}:/course']
+                                      )
 
     return container
+
 
 def stop_container(container, **kwargs):
     container.stop()
 
+
 def delete_container(container, **kwargs):
     container.remove()
+
 
 def generate_random_string(length=10):
     letters = string.ascii_letters
     return ''.join(random.choice(letters) for i in range(length))
 
+
 def create_volume(client, name):
     return client.volumes.create(f'{name}-{generate_random_string()}')
 
+
 def delete_volume(volume, **kwargs):
     volume.remove()
+
 
 def setup_tmp_build(notebook_repo, **kwargs):
 
@@ -118,11 +130,14 @@ def setup_tmp_build(notebook_repo, **kwargs):
 
     return dir
 
+
 def cleanup_build(dir):
     dir.cleanup()
 
+
 def build_image(client, dir, tag="sci-oer:custom", **kwargs):
     client.images.build(path=dir.name, tag=tag)
+
 
 def extract_db(container, dir, **kwargs):
     f = open(os.path.join(dir.name, 'database.sqlite.tar'), 'wb')
@@ -133,11 +148,14 @@ def extract_db(container, dir, **kwargs):
         f.write(chunk)
     f.close()
 
+
 def create_network(client, **kwargs):
     return client.networks.create(generate_random_string(), attachable=True)
 
+
 def get_current_container(client, **kwargs):
     return client.containers.get(platform.node())
+
 
 def create_page(host, page, **kwargs):
     q = """mutation Page {{
@@ -163,6 +181,7 @@ def create_page(host, page, **kwargs):
 
     api_call(host, query, **kwargs)
 
+
 def dissable_api(host, **kwargs):
     query = """mutation Authentication {
         authentication {
@@ -173,6 +192,7 @@ def dissable_api(host, **kwargs):
     }"""
 
     api_call(host, query, **kwargs)
+
 
 def api_call(host, query, port=3000):
 
@@ -188,6 +208,7 @@ def api_call(host, query, port=3000):
     else:
         raise Exception(f"Query failed to run with a {r.status_code}.")
 
+
 class Page:
     content = ""
     description = ""
@@ -202,6 +223,7 @@ class Page:
         self.tags = '"' + '", "'.join(tags) + '"'
         self.content = content
 
+
 def load_wiki_files(dir):
 
     pages = []
@@ -210,10 +232,16 @@ def load_wiki_files(dir):
     # filename is path
     # parse the preamble out of each file
 
-
-    pages.append(Page("Cool Sample Page", "/test", "This is a super cool sample page", ["test", "sample"], "my cool markdown content"))
+    page = Page("Cool Sample Page",
+                "/test",
+                "This is a super cool sample page",
+                ["test", "sample"],
+                "my cool markdown content"
+                )
+    pages.append(page)
 
     return pages
+
 
 def upload_wiki(pages, hostname, **kwargs):
 
@@ -226,9 +254,8 @@ def check_if_container(client):
     try:
         get_current_container(client)
         return True
-    except:
+    except docker.errors.NotFound:
         return False
-
 
 
 def get_wiki_port(isContainer, container):
@@ -240,9 +267,8 @@ def get_wiki_port(isContainer, container):
     ports = container.ports
     _LOGGER.info(ports)
 
-
-
     return int(container.ports.get('3000/tcp')[0]['HostPort'])
+
 
 def main(opts, **kwargs):
 
@@ -263,16 +289,13 @@ def main(opts, **kwargs):
     container = start_container(client, volume, opts['base'])
     network.connect(container)
 
-
     print("waiting a 5 seconds to make sure the container is up")
     time.sleep(5)
     container.reload()
 
     dir = setup_tmp_build(opts['jupyter_repo'])
 
-    ##
-    ## clone the wiki here and make the api calls to import all the wiki data
-    ##
+    # TODO:clone the wiki here and make the api calls to import all the wiki data
 
     port = get_wiki_port(containerized, container)
     host = '127.0.0.1' if not containerized else container.name
@@ -281,12 +304,10 @@ def main(opts, **kwargs):
     upload_wiki(pages, host, port=port)
     dissable_api(host, port=port)
 
-
     stop_container(container)
     network.disconnect(container)
 
     extract_db(container, dir)
-
 
     delete_container(container)
     delete_volume(volume)
@@ -303,10 +324,6 @@ if __name__ == "__main__":
 
     args = docopt(__doc__)
 
-    if args['--version']:
-        print(_gen_version())
-        sys.exit(0)
-
     if args['--debug']:
         args['--verbose'] = True
         log_fmt = '%(log_color)s[%(levelname)s] (%(module)s) (%(funcName)s): %(message)s'
@@ -321,16 +338,16 @@ if __name__ == "__main__":
 
     if sys.platform == 'win32':
         log_colors = {
-            'DEBUG': f'bold_blue',
-            'INFO': f'bold_purple',
+            'DEBUG': 'bold_blue',
+            'INFO': 'bold_purple',
             'WARNING': 'yellow,bold',
             'ERROR': 'red,bold',
             'CRITICAL': 'red,bold,bg_white',
         }
     else:
         log_colors = {
-            'DEBUG': f'blue',
-            'INFO': f'purple',
+            'DEBUG': 'blue',
+            'INFO': 'purple',
             'WARNING': 'yellow,bold',
             'ERROR': 'red,bold',
             'CRITICAL': 'red,bold,bg_white',
@@ -345,6 +362,10 @@ if __name__ == "__main__":
 
     _LOGGER.debug('version: %s', _gen_version())
     _LOGGER.debug('platform: %s', platform.platform())
+
+    if args['--version']:
+        print(_gen_version())
+        sys.exit(0)
 
     opts = _make_opts(args)
     print(opts)
