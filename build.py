@@ -1,29 +1,39 @@
 #!/usr/bin/env python3
 
-"""Automated sci-oer builder
+"""Automated sci-oer builder.
+
+This command will take the base sci-oer image and create a custom image pre filled
+with all the specified content.
 
 Usage:
   ./build.py [options] [ --example=<examples>... ]
   ./build.py (-h | --help)
 
 Options:
-  -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
-  -b --base=<base>                  The base image to use [default: marshallasch/oo-resources:main]
-  -w --wiki-repo=<wiki>             The git repository to fetch the wiki content from.
-  -j --jupyter-repo=<jupyter>       The git repository to fetch the builtin jupyter notebooks from.
-  -e --example=<examples>...        A git repository to fetch a worked example from. One repository per exmple, one branch per version.
+ -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from.
+ -e --example=<examples>...         A git repository to fetch a worked example from. One repository per exmple, one branch per version.
+
+General git options:
   --ssh-key=<private_key>           The SSH private key to use. WARNING: this will be passed in plain text, use a read-only key if possible.
   --key-file=<key_file>             The path to the ssh private key that should be used.
+
+WikiJS options:
+  -w --wiki-repo=<wiki>             The git repository to fetch the wiki content from.
   --wiki-user=<wiki_user>           The git username to use when cloning the the wikijs content.
   --wiki-password=<wiki_pass>       The git password to use when cloning the wikiks content.
   --wiki-branch=<wiki_branch>       The name of the branch that the wiki content should be loaded from. [default: main]
   --wiki-no-verify                  Do not verify the ssl certificate when cloning the wikijs wiki.
 
+Docker options:
+  -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
+  -b --base=<base>                  The base image to use [default: marshallasch/oo-resources:main]
+  --no-pull                         Don't pull the base image first
+
 Other interface options:
-  -h --help         Show this help message.
-  -V --version      Show the current version.
-  -v --verbose      Show verbose log messages.
-  -d --debug        Show debug log messages.
+  -h --help                         Show this help message.
+  -V --version                      Show the current version.
+  -v --verbose                      Show verbose log messages.
+  -d --debug                        Show debug log messages.
 """ # noqa E501
 
 import docker
@@ -417,7 +427,8 @@ def main(opts, **kwargs):
 
     client = docker.from_env()
 
-    fetch_latest(client, opts['base'])
+    if not opts['no_pull']:
+        fetch_latest(client, opts['base'])
 
     network = create_network(client)
 
