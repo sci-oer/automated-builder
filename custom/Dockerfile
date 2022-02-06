@@ -12,7 +12,7 @@ LABEL org.opencontainers.image.description="This image containes all the content
 
 
 
-COPY jupyter/* /jupyter/builtin/
+COPY jupyter /jupyter/builtin/
 ADD database.sqlite.tar /opt/wiki/
 # COPY motd.txt /motd.txt
 

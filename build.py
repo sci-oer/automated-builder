@@ -14,6 +14,10 @@ Options:
   -e --example=<examples>...        A git repository to fetch a worked example from. One repository per exmple, one branch per version.
   --ssh-key=<private_key>           The SSH private key to use. WARNING: this will be passed in plain text, use a read-only key if possible.
   --key-file=<key_file>             The path to the ssh private key that should be used.
+  --wiki-user=<wiki_user>           The git username to use when cloning the the wikijs content.
+  --wiki-password=<wiki_pass>       The git password to use when cloning the wikiks content.
+  --wiki-branch=<wiki_branch>       The name of the branch that the wiki content should be loaded from. [default: main]
+  --wiki-no-verify                  Do not verify the ssl certificate when cloning the wikijs wiki.
 
 Other interface options:
   -h --help         Show this help message.
@@ -32,14 +36,18 @@ import shutil
 import platform
 import requests
 import json
-from git import Repo
+from git import Repo  # noqa: I900
 import time
 from docopt import docopt
 import subprocess
 import colorlog
 import logging
 
-from version import __version__
+from version import __version__  # noqa: I900
+
+
+SSH_KEY_ENV = 'SSH_KEY'
+SSH_KEY_FILE_ENV = 'SSH_KEY_FILE'
 
 
 # this is the api token that has been built into the base oo-resources container
@@ -126,7 +134,12 @@ def setup_tmp_build(notebook_repo, **kwargs):
     dir = tempfile.TemporaryDirectory()
 
     shutil.copy2(os.path.join('custom', 'Dockerfile'), os.path.join(dir.name, 'Dockerfile'))
-    Repo.clone_from(notebook_repo, os.path.join(dir.name, 'jupyter'))
+
+    jupyterDir = os.path.join(dir.name, 'jupyter')
+    Repo.clone_from(notebook_repo, jupyterDir)
+
+    # make sure that the git directory is removed before it gets loaded into the image
+    shutil.rmtree(os.path.join(jupyterDir, '.git'))
 
     return dir
 
@@ -182,6 +195,175 @@ def create_page(host, page, **kwargs):
     api_call(host, query, **kwargs)
 
 
+class Authentication:
+    ssh_key = ""
+    username = ""
+    password = ""
+
+    def __init__(self, username, password, ssh_key):
+        self.username = username
+        self.password = password
+        self.ssh_key = ssh_key
+
+    def authType(self):
+        if self.ssh_key != "":
+            return 'ssh'
+
+        return 'basic'
+
+
+class Repository:
+    uri = ""
+    branch = "main"
+    verify_ssl = True
+
+    auth = Authentication("", "", "")
+
+    def __init__(self, uri, branch, verify):
+        self.uri = uri
+        self.branch = branch
+        self.verify_ssl = verify
+
+
+def set_wiki_contents(host, repo, **kwargs):
+
+    configure_wiki_repo(host, True, repo, **kwargs)
+    import_wiki_repo(host, **kwargs)
+    remove_git_repo(host, **kwargs)
+
+
+def remove_git_repo(host, **kwargs):
+    configure_wiki_repo(host, False, Repository("", "", ""),  **kwargs)
+
+
+def sync_wiki_repo(host, **kwargs):
+    query = """mutation Storage {
+        storage {
+            executeAction (handler: "sync", targetKey: "git" ) {
+                responseResult { succeeded, errorCode, slug, message }
+            }
+        }
+    }"""
+
+    api_call(host, query, **kwargs)
+
+
+def import_wiki_repo(host, **kwargs):
+    query = """mutation Storage {
+        storage {
+            executeAction (handler: "importAll", targetKey: "git" ) {
+                responseResult { succeeded, errorCode, slug, message }
+            }
+        }
+    }"""
+
+    _LOGGER.warning('Importing all the wiki content from the git repository, this may take a while...')  # noqa: E501
+    api_call(host, query, **kwargs)
+    _LOGGER.warning('Done importing wiki content')
+
+
+def load_ssh_key(keyValue, keyFile):
+
+    env_key = os.getenv(SSH_KEY_ENV)
+    env_key_file = os.getenv(SSH_KEY_FILE_ENV)
+
+    keyFileContents = load_ssh_key_from_file(keyFile)
+    envKeyFileContents = load_ssh_key_from_file(env_key_file)
+
+    if keyValue is not None:
+        _LOGGER.debug('Using ssh key specified with cli key flag')
+        return keyValue
+    elif keyFileContents != "":
+        _LOGGER.debug('Using ssh key specified with cli keyfile flag')
+        return keyFileContents
+    elif env_key is not None:
+        _LOGGER.debug(f'Using ssh key specified with {SSH_KEY_ENV} env variable')
+        return env_key
+    elif envKeyFileContents != "":
+        _LOGGER.debug(f'Using ssh key specified with {SSH_KEY_FILE_ENV} env variable')
+        return envKeyFileContents
+    else:
+        _LOGGER.debug('no ssh key has been specified')
+        return ""
+
+
+def load_ssh_key_from_file(keyFile):
+
+    if keyFile is None or not os.path.isfile(keyFile):
+        _LOGGER.info(f'the specified ssh key file `{keyFile}` does not exist')
+        return ""
+
+    with open(keyFile, 'r') as f:
+        return f.read()
+
+
+def configure_wiki_repo(host, enabled, repo, **kwargs):
+    query = """mutation ($targets: [StorageTargetInput]!) {
+        storage {
+            updateTargets(targets: $targets) {
+                responseResult {
+                    succeeded
+                    errorCode
+                    message
+                }
+            }
+        }
+    }"""
+
+    variables = {"targets": [{
+            "isEnabled": enabled,
+            "key": "git",
+            "config": [
+                {
+                    "key": "authType",
+                    "value": f'{{"v": "{repo.auth.authType()}"}}'
+                }, {
+                    "key": "repoUrl",
+                    "value": f'{{"v": "{repo.uri}"}}'
+                }, {
+                    "key": "branch",
+                    "value": f'{{"v": "{repo.branch}"}}'
+                }, {
+                    "key": "sshPrivateKeyMode",
+                    "value": '{"v": "contents"}'
+                }, {
+                    "key": "sshPrivateKeyPath",
+                    "value": '{"v": ""}'
+                }, {
+                    "key": "sshPrivateKeyContent",
+                    "value": f'{{"v": "{repo.auth.ssh_key}"}}'
+                }, {
+                    "key": "verifySSL",
+                    "value": f'{{"v": "{repo.verify_ssl}"}}'
+                }, {
+                    "key": "basicUsername",
+                    "value": f'{{"v": "{repo.auth.username}"}}'
+                }, {
+                    "key": "basicPassword",
+                    "value": f'{{"v": "{repo.auth.password}"}}'
+                }, {
+                    "key": "defaultEmail",
+                    "value": '{ "v": "sci-oer@example.com"}'
+                }, {
+                    "key": "defaultName",
+                    "value": '{ "v": "Open Educational Resource Container"}'
+                }, {
+                    "key": "localRepoPath",
+                    "value": '{ "v": "./data/repo"}'
+                }, {
+                    "key": "gitBinaryPath",
+                    "value": '{ "v": ""}'
+                }
+            ],
+            "mode": "pull",
+            "syncInterval": "PT5M"
+        }
+        ]
+    }
+
+    api_call(host, query, variables=variables,  **kwargs)
+
+
 def dissable_api(host, **kwargs):
     query = """mutation Authentication {
         authentication {
@@ -194,59 +376,21 @@ def dissable_api(host, **kwargs):
     api_call(host, query, **kwargs)
 
 
-def api_call(host, query, port=3000):
+def api_call(host, query, variables="{}", port=3000):
 
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
-    r = requests.post(f'http://{host}:{port}/graphql', json={"query": query}, headers=headers)
+    body = {
+        "query": query,
+        "variables": variables
+    }
 
-    print(r.json)
-    print(r.text)
-    print(r.content)
+    r = requests.post(f'http://{host}:{port}/graphql', json=body, headers=headers)
+
     if r.status_code == 200:
-        print(json.dumps(r.json(), indent=2))
+        _LOGGER.info(json.dumps(r.json(), indent=2))
     else:
         raise Exception(f"Query failed to run with a {r.status_code}.")
-
-
-class Page:
-    content = ""
-    description = ""
-    path = ""
-    tags = ""
-    title = ""
-
-    def __init__(self, title, path, description, tags, content):
-        self.title = title
-        self.path = path
-        self.description = description
-        self.tags = '"' + '", "'.join(tags) + '"'
-        self.content = content
-
-
-def load_wiki_files(dir):
-
-    pages = []
-
-    # recursivly look at all file in dir
-    # filename is path
-    # parse the preamble out of each file
-
-    page = Page("Cool Sample Page",
-                "/test",
-                "This is a super cool sample page",
-                ["test", "sample"],
-                "my cool markdown content"
-                )
-    pages.append(page)
-
-    return pages
-
-
-def upload_wiki(pages, hostname, **kwargs):
-
-    for page in pages:
-        create_page(hostname, page, **kwargs)
 
 
 def check_if_container(client):
@@ -263,11 +407,10 @@ def get_wiki_port(isContainer, container):
     if isContainer:
         return '3000'
 
-    _LOGGER.info(container)
-    ports = container.ports
-    _LOGGER.info(ports)
+    wikiPort = int(container.ports.get('3000/tcp')[0]['HostPort'])
+    _LOGGER.info(f'Wiki running on port {wikiPort}')
 
-    return int(container.ports.get('3000/tcp')[0]['HostPort'])
+    return wikiPort
 
 
 def main(opts, **kwargs):
@@ -295,13 +438,15 @@ def main(opts, **kwargs):
 
     dir = setup_tmp_build(opts['jupyter_repo'])
 
-    # TODO:clone the wiki here and make the api calls to import all the wiki data
-
     port = get_wiki_port(containerized, container)
     host = '127.0.0.1' if not containerized else container.name
 
-    pages = load_wiki_files("tmp")
-    upload_wiki(pages, host, port=port)
+    sshKey = load_ssh_key(opts['ssh_key'], opts['key_file'])
+
+    wikiRepo = Repository(opts['wiki_repo'], opts['wiki_branch'], not opts['wiki_no_verify'])
+    wikiRepo.auth = Authentication(opts['wiki_user'], opts['wiki_password'], sshKey)
+
+    set_wiki_contents(host, wikiRepo, port=port)
     dissable_api(host, port=port)
 
     stop_container(container)
