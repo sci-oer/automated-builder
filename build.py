@@ -126,7 +126,7 @@ def setup_tmp_build(notebook_repo, **kwargs):
     dir = tempfile.TemporaryDirectory()
 
     shutil.copy2(os.path.join('custom', 'Dockerfile'), os.path.join(dir.name, 'Dockerfile'))
-    Repo.clone_from(notebook_repo, os.path.join(dir.name, 'builtin'))
+    Repo.clone_from(notebook_repo, os.path.join(dir.name, 'jupyter'))
 
     return dir
 
