@@ -179,32 +179,6 @@ def create_network(client, **kwargs):
 def get_current_container(client, **kwargs):
     return client.containers.get(platform.node())
 
-
-def create_page(host, page, **kwargs):
-    q = """mutation Page {{
-        pages {{
-            create (
-                content: "{}",
-                description: "{}",
-                path: "{}",
-                tags: [{}],
-                title: "{}",
-                editor: "code",
-                isPublished: true,
-                isPrivate: false,
-                locale: "en"
-            ) {{
-                responseResult {{ succeeded, errorCode, slug, message }}
-            }}
-        }}
-    }}
-    """
-
-    query = q.format(page.content, page.description, page.path, page.tags, page.title)
-
-    api_call(host, query, **kwargs)
-
-
 class Authentication:
     ssh_key = ""
     username = ""
