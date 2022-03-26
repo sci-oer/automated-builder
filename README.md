@@ -73,6 +73,8 @@ If you notice something that doesn't quite work or if you want to add new featur
 
 Currently, we are focusing on completing this script so that all of the aspects of the sci-oer container can be customized using the cli, or possibly a configuration file. The next steps will be to develop a web interface so that the customized version can be created without needing to install all the tools. 
 
+See the [CONTRIBUTING.md](.github/CONTRIBUTING.md) guide for more information. 
+
 
 ## License 
 
