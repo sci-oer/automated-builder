@@ -20,6 +20,7 @@ General git options:
 
 WikiJS options:
   -w --wiki-repo=<wiki>             The git repository to fetch the wiki content from.
+  --wiki-title=<title>              The title to use for the wiki website.
   --wiki-user=<wiki_user>           The git username to use when cloning the the wikijs content.
   --wiki-password=<wiki_pass>       The git password to use when cloning the wikiks content.
   --wiki-branch=<wiki_branch>       The name of the branch that the wiki content should be loaded from. [default: main]
@@ -247,6 +248,17 @@ def import_wiki_repo(host, **kwargs):
     api_call(host, query, **kwargs)
     _LOGGER.warning('Done importing wiki content')
 
+def set_wiki_title(host, title, **kwargs):
+    query = """mutation Site ($title: String){
+        site {
+            updateConfig (title: $title ) {
+                responseResult { succeeded, errorCode, slug, message }
+            }
+        }
+    }"""
+
+    api_call(host, query, variables={"title": title}, **kwargs)
+
 
 def load_ssh_key(keyValue, keyFile):
 
@@ -442,6 +454,7 @@ def main(opts, **kwargs):
     wikiRepo.auth = Authentication(opts['wiki_user'], opts['wiki_password'], sshKey)
 
     set_wiki_contents(host, wikiRepo, port=port)
+    set_wiki_title(host, opts['wiki_title'], port=port)
     dissable_api(host, port=port)
 
     stop_container(container)
