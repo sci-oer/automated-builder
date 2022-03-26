@@ -11,6 +11,7 @@ Usage:
 
 Options:
  -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from.
+ -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content.
  -e --example=<examples>...         A git repository to fetch a worked example from. One repository per exmple, one branch per version.
 
 General git options:
@@ -138,19 +139,20 @@ def create_volume(client, name):
 def delete_volume(volume, **kwargs):
     volume.remove()
 
+def clone_repo(repo, name, dir, **kwargs):
+    folder = os.path.join(dir, name)
+    Repo.clone_from(repo, folder)
 
-def setup_tmp_build(notebook_repo, **kwargs):
+    # make sure that the git directory is removed before it gets loaded into the image
+    shutil.rmtree(os.path.join(folder, '.git'))
+
+
+
+def setup_tmp_build(**kwargs):
 
     dir = tempfile.TemporaryDirectory()
 
     shutil.copy2(os.path.join('custom', 'Dockerfile'), os.path.join(dir.name, 'Dockerfile'))
-
-    jupyterDir = os.path.join(dir.name, 'jupyter')
-    Repo.clone_from(notebook_repo, jupyterDir)
-
-    # make sure that the git directory is removed before it gets loaded into the image
-    shutil.rmtree(os.path.join(jupyterDir, '.git'))
-
     return dir
 
 
@@ -159,11 +161,11 @@ def cleanup_build(dir):
 
 
 def build_image(client, dir, tag="sci-oer:custom", **kwargs):
-    client.images.build(path=dir.name, tag=tag)
+    client.images.build(path=dir, tag=tag)
 
 
 def extract_db(container, dir, **kwargs):
-    f = open(os.path.join(dir.name, 'database.sqlite.tar'), 'wb')
+    f = open(os.path.join(dir, 'database.sqlite.tar'), 'wb')
     bits, stat = container.get_archive('/course/wiki/database.sqlite')
     print(stat)
 
@@ -421,7 +423,15 @@ def main(opts, **kwargs):
     time.sleep(5)
     container.reload()
 
-    dir = setup_tmp_build(opts['jupyter_repo'])
+    dir = setup_tmp_build()
+    
+    clone_repo(opts['jupyter_repo'], 'jupyter', dir.name)
+    clone_repo(opts['lectures_repo'], 'lectures', dir.name)
+
+    examples = os.path.join(dir.name, 'practiceProblems')
+    os.makedirs(examples, exist_ok=True)
+    for example in opts['example']:
+        clone_repo(example, example.split('/')[-1][:-4], examples)
 
     port = get_wiki_port(containerized, container)
     host = '127.0.0.1' if not containerized else container.name
@@ -437,12 +447,12 @@ def main(opts, **kwargs):
     stop_container(container)
     network.disconnect(container)
 
-    extract_db(container, dir)
+    extract_db(container, dir.name)
 
     delete_container(container)
     delete_volume(volume)
 
-    build_image(client, dir, tag=opts['tag'])
+    build_image(client, dir.name, tag=opts['tag'])
     cleanup_build(dir)
 
     if containerized:

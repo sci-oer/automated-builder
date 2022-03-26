@@ -11,7 +11,10 @@ LABEL org.opencontainers.image.description="A custom built version of the oo-res
 
 
 
-COPY jupyter /jupyter/builtin/
+COPY jupyter /builtin/jupyter/
+COPY lectures /builtin/lectures/
+COPY practiceProblems /builtin/practiceProblems/
+
 ADD database.sqlite.tar /opt/wiki/
 # COPY motd.txt /motd.txt
 
