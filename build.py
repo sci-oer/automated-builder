@@ -54,6 +54,9 @@ from docopt import docopt
 import subprocess
 import colorlog
 import logging
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
 
 from version import __version__  # noqa: I900
 
@@ -102,12 +105,16 @@ def _gen_version():
 
 
 def fetch_latest(client, repository, **kwargs):
+    _LOGGER.info(f'pulling latest version of the "{repository}" docker image, this may take a while...')
     client.images.pull(repository)
+    _LOGGER.info('Done pulling the latest docker image')
+
 
 
 def start_container(client, volume, image, **kwargs):
     name = f'auto-build-tmp-{generate_random_string()}'
 
+    _LOGGER.info(f'starting `{image}` container as `{name}`...')
     onHost = not check_if_container(client)
     container = client.containers.run(image,
                                       publish_all_ports=onHost,
@@ -121,10 +128,12 @@ def start_container(client, volume, image, **kwargs):
 
 
 def stop_container(container, **kwargs):
+    _LOGGER.info('stopping docker container...')
     container.stop()
 
 
 def delete_container(container, **kwargs):
+    _LOGGER.info('Deleteing setup container...')
     container.remove()
 
 
@@ -138,16 +147,21 @@ def create_volume(client, name):
 
 
 def delete_volume(volume, **kwargs):
+    _LOGGER.info('Deleteing setup volume...')
     volume.remove()
 
 def clone_repo(repo, name, dir, **kwargs):
     folder = os.path.join(dir, name)
+
+    if repo is None:
+        os.mkdir(folder)
+        _LOGGER.info(f'no repository specified for "{name}", skipping...')
+        return
+
     Repo.clone_from(repo, folder)
 
     # make sure that the git directory is removed before it gets loaded into the image
     shutil.rmtree(os.path.join(folder, '.git'))
-
-
 
 def setup_tmp_build(**kwargs):
 
@@ -158,17 +172,21 @@ def setup_tmp_build(**kwargs):
 
 
 def cleanup_build(dir):
+    _LOGGER.info('removing temporary setup folder...')
     dir.cleanup()
 
 
+
 def build_image(client, dir, tag="sci-oer:custom", **kwargs):
+    _LOGGER.info(f'Building custom image with name `{tag}`...')
     client.images.build(path=dir, tag=tag)
+    _LOGGER.info('Done building custom image.')
 
 
 def extract_db(container, dir, **kwargs):
+    _LOGGER.info('extracting wikijs database...')
     f = open(os.path.join(dir, 'database.sqlite.tar'), 'wb')
     bits, stat = container.get_archive('/course/wiki/database.sqlite')
-    print(stat)
 
     for chunk in bits:
         f.write(chunk)
@@ -213,7 +231,6 @@ class Repository:
 
 
 def set_wiki_contents(host, repo, **kwargs):
-
     configure_wiki_repo(host, True, repo, **kwargs)
     import_wiki_repo(host, **kwargs)
     remove_git_repo(host, **kwargs)
@@ -234,7 +251,6 @@ def sync_wiki_repo(host, **kwargs):
 
     api_call(host, query, **kwargs)
 
-
 def import_wiki_repo(host, **kwargs):
     query = """mutation Storage {
         storage {
@@ -249,6 +265,11 @@ def import_wiki_repo(host, **kwargs):
     _LOGGER.warning('Done importing wiki content')
 
 def set_wiki_title(host, title, **kwargs):
+
+    if title is None:
+        _LOGGER.info('Custom title has not been configured skipping...')
+        return
+
     query = """mutation Site ($title: String){
         site {
             updateConfig (title: $title ) {
@@ -258,7 +279,6 @@ def set_wiki_title(host, title, **kwargs):
     }"""
 
     api_call(host, query, variables={"title": title}, **kwargs)
-
 
 def load_ssh_key(keyValue, keyFile):
 
@@ -386,8 +406,9 @@ def api_call(host, query, variables="{}", port=3000):
     r = requests.post(f'http://{host}:{port}/graphql', json=body, headers=headers)
 
     if r.status_code == 200:
-        _LOGGER.info(json.dumps(r.json(), indent=2))
+        _LOGGER.info("Made change successfully")
     else:
+        _LOGGER.error(json.dumps(r.json(), indent=2))
         raise Exception(f"Query failed to run with a {r.status_code}.")
 
 
@@ -410,6 +431,15 @@ def get_wiki_port(isContainer, container):
 
     return wikiPort
 
+def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
+    http = requests.Session()
+    retry_strategy = Retry(total=5, backoff_factor=1)
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    http.mount('http://', adapter)
+    r = http.get(f'http://{host}:{port}')
+
+    if r.status_code == 200:
+         _LOGGER.info('wiki is ready')
 
 def main(opts, **kwargs):
 
@@ -424,6 +454,7 @@ def main(opts, **kwargs):
     containerized = check_if_container(client)
 
     if containerized:
+        _LOGGER.debug("Currently running in a docker container")
         this = get_current_container(client)
         network.connect(this)
 
@@ -431,9 +462,12 @@ def main(opts, **kwargs):
     container = start_container(client, volume, opts['base'])
     network.connect(container)
 
-    print("waiting a 5 seconds to make sure the container is up")
-    time.sleep(5)
     container.reload()
+
+    port = get_wiki_port(containerized, container)
+    host = '127.0.0.1' if not containerized else container.name
+
+    wait_for_wiki_to_be_ready(host, port)
 
     dir = setup_tmp_build()
     
@@ -444,16 +478,18 @@ def main(opts, **kwargs):
     os.makedirs(examples, exist_ok=True)
     for example in opts['example']:
         clone_repo(example, example.split('/')[-1][:-4], examples)
+    else:
+        _LOGGER.info("no example repos were specified, skipping...")
 
-    port = get_wiki_port(containerized, container)
-    host = '127.0.0.1' if not containerized else container.name
+    if opts['wiki_repo'] is not None:
+        sshKey = load_ssh_key(opts['ssh_key'], opts['key_file'])
+        wikiRepo = Repository(opts['wiki_repo'], opts['wiki_branch'], not opts['wiki_no_verify'])
+        wikiRepo.auth = Authentication(opts['wiki_user'], opts['wiki_password'], sshKey)
 
-    sshKey = load_ssh_key(opts['ssh_key'], opts['key_file'])
+        set_wiki_contents(host, wikiRepo, port=port)
+    else:
+        _LOGGER.info('wiki content repository has not been set. skipping...')
 
-    wikiRepo = Repository(opts['wiki_repo'], opts['wiki_branch'], not opts['wiki_no_verify'])
-    wikiRepo.auth = Authentication(opts['wiki_user'], opts['wiki_password'], sshKey)
-
-    set_wiki_contents(host, wikiRepo, port=port)
     set_wiki_title(host, opts['wiki_title'], port=port)
     dissable_api(host, port=port)
 
@@ -471,6 +507,8 @@ def main(opts, **kwargs):
     if containerized:
         network.disconnect(this)
     network.remove()
+
+    _LOGGER.info('Done.')
 
 
 if __name__ == "__main__":
@@ -521,6 +559,6 @@ if __name__ == "__main__":
         sys.exit(0)
 
     opts = _make_opts(args)
-    print(opts)
+    _LOGGER.info(opts)
 
     main(opts)
