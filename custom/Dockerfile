@@ -16,7 +16,7 @@ COPY lectures /builtin/lectures/
 COPY practiceProblems /builtin/practiceProblems/
 
 ADD database.sqlite.tar /opt/wiki/
-# COPY motd.txt /motd.txt
+#COPY motd.txt /scripts/motd.txt
 
 ARG BUILD_DATE
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
