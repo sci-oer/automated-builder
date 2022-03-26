@@ -56,6 +56,7 @@ import colorlog
 import logging
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+import datetime
 
 
 from version import __version__  # noqa: I900
@@ -66,9 +67,7 @@ SSH_KEY_FILE_ENV = 'SSH_KEY_FILE'
 
 
 # this is the api token that has been built into the base oo-resources container
-
 API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA" # noqa E501
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +109,6 @@ def fetch_latest(client, repository, **kwargs):
     _LOGGER.info('Done pulling the latest docker image')
 
 
-
 def start_container(client, volume, image, **kwargs):
     name = f'auto-build-tmp-{generate_random_string()}'
 
@@ -150,6 +148,7 @@ def delete_volume(volume, **kwargs):
     _LOGGER.info('Deleteing setup volume...')
     volume.remove()
 
+
 def clone_repo(repo, name, dir, **kwargs):
     folder = os.path.join(dir, name)
 
@@ -163,10 +162,9 @@ def clone_repo(repo, name, dir, **kwargs):
     # make sure that the git directory is removed before it gets loaded into the image
     shutil.rmtree(os.path.join(folder, '.git'))
 
+
 def setup_tmp_build(**kwargs):
-
     dir = tempfile.TemporaryDirectory()
-
     shutil.copy2(os.path.join('custom', 'Dockerfile'), os.path.join(dir.name, 'Dockerfile'))
     return dir
 
@@ -176,10 +174,15 @@ def cleanup_build(dir):
     dir.cleanup()
 
 
+def build_image(client, dir, tag="sci-oer:custom", base=None, **kwargs):
 
-def build_image(client, dir, tag="sci-oer:custom", **kwargs):
+    args = {
+        'BASE_IMAGE': base,
+        'BUILD_DATE': datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
     _LOGGER.info(f'Building custom image with name `{tag}`...')
-    client.images.build(path=dir, tag=tag)
+    client.images.build(path=dir, tag=tag, buildargs=args)
     _LOGGER.info('Done building custom image.')
 
 
@@ -199,6 +202,7 @@ def create_network(client, **kwargs):
 
 def get_current_container(client, **kwargs):
     return client.containers.get(platform.node())
+
 
 class Authentication:
     ssh_key = ""
@@ -251,6 +255,7 @@ def sync_wiki_repo(host, **kwargs):
 
     api_call(host, query, **kwargs)
 
+
 def import_wiki_repo(host, **kwargs):
     query = """mutation Storage {
         storage {
@@ -263,6 +268,7 @@ def import_wiki_repo(host, **kwargs):
     _LOGGER.warning('Importing all the wiki content from the git repository, this may take a while...')  # noqa: E501
     api_call(host, query, **kwargs)
     _LOGGER.warning('Done importing wiki content')
+
 
 def set_wiki_title(host, title, **kwargs):
 
@@ -279,6 +285,7 @@ def set_wiki_title(host, title, **kwargs):
     }"""
 
     api_call(host, query, variables={"title": title}, **kwargs)
+
 
 def load_ssh_key(keyValue, keyFile):
 
@@ -431,6 +438,7 @@ def get_wiki_port(isContainer, container):
 
     return wikiPort
 
+
 def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
     http = requests.Session()
     retry_strategy = Retry(total=5, backoff_factor=1)
@@ -440,6 +448,7 @@ def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
 
     if r.status_code == 200:
          _LOGGER.info('wiki is ready')
+
 
 def main(opts, **kwargs):
 
@@ -501,7 +510,7 @@ def main(opts, **kwargs):
     delete_container(container)
     delete_volume(volume)
 
-    build_image(client, dir.name, tag=opts['tag'])
+    build_image(client, dir.name, tag=opts['tag'], base=opts['base'])
     cleanup_build(dir)
 
     if containerized:
