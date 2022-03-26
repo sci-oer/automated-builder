@@ -2,5 +2,6 @@ course
 .git
 .github
 Dockerfile
+renovate.json
 venv
 __pycache__
