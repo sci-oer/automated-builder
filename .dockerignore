@@ -5,3 +5,4 @@ Dockerfile
 renovate.json
 venv
 __pycache__
+.venv
