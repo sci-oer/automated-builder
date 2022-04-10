@@ -10,21 +10,23 @@ Usage:
   ./build.py (-h | --help)
 
 Options:
- -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from.
- -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content.
- -e --example=<examples>...         A git repository to fetch a worked example from. One repository per exmple, one branch per version.
+ -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from. The default branch will be used.
+ -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content. The default branch will be used.
+ -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
 
 General git options:
   --ssh-key=<private_key>           The SSH private key to use. WARNING: this will be passed in plain text, use a read-only key if possible.
   --key-file=<key_file>             The path to the ssh private key that should be used.
+  --no-verify-host                  Sets the `StrictHostKeyChecking=no` option when cloning git repos, may be needed to non-interactivly accept git clones using ssh.
+  --keep-git                        Will not remove the `.git` folder in repositories if this is set. This can be used to create an instructor version of the container.
 
 WikiJS options:
-  -w --wiki-repo=<wiki>             The git repository to fetch the wiki content from.
+  -w --wiki-git-repo=<wiki>         The git repository to fetch the wiki content from.
+  --wiki-git-user=<wiki_user>           The git username to use when cloning the the wikijs content.
+  --wiki-git-password=<wiki_pass>       The git password to use when cloning the wikiks content.
   --wiki-title=<title>              The title to use for the wiki website.
-  --wiki-user=<wiki_user>           The git username to use when cloning the the wikijs content.
-  --wiki-password=<wiki_pass>       The git password to use when cloning the wikiks content.
-  --wiki-branch=<wiki_branch>       The name of the branch that the wiki content should be loaded from. [default: main]
-  --wiki-no-verify                  Do not verify the ssl certificate when cloning the wikijs wiki.
+  --wiki-git-branch=<wiki_branch>   The name of the branch that the wiki content should be loaded from. [default: main]
+  --wiki-git-no-verify              Do not verify the ssl certificate when cloning the wikijs wiki.
 
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
@@ -49,7 +51,6 @@ import platform
 import requests
 import json
 from git import Repo  # noqa: I900
-import time
 from docopt import docopt
 import subprocess
 import colorlog
@@ -57,7 +58,6 @@ import logging
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import datetime
-
 
 from version import __version__  # noqa: I900
 
@@ -149,18 +149,23 @@ def delete_volume(volume, **kwargs):
     volume.remove()
 
 
-def clone_repo(repo, name, dir, **kwargs):
+def clone_repo(repo, name, dir, keep_git=False, **kwargs):
     folder = os.path.join(dir, name)
 
-    if repo is None:
+    if repo.uri is None:
         os.mkdir(folder)
         _LOGGER.info(f'no repository specified for "{name}", skipping...')
         return
 
-    Repo.clone_from(repo, folder)
+    git_ssh_cmd = ""
+    if repo.isSSH():
+        git_ssh_cmd = f'ssh {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}-i {repo.auth.ssh_file}'
+    Repo.clone_from(repo.uri, folder,env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
 
-    # make sure that the git directory is removed before it gets loaded into the image
-    shutil.rmtree(os.path.join(folder, '.git'))
+
+    if not keep_git:
+        # make sure that the git directory is removed before it gets loaded into the image
+        shutil.rmtree(os.path.join(folder, '.git'))
 
 
 def setup_tmp_build(**kwargs):
@@ -208,36 +213,42 @@ class Authentication:
     ssh_key = ""
     username = ""
     password = ""
+    ssh_file = ""
 
-    def __init__(self, username, password, ssh_key):
-        self.username = username
-        self.password = password
+    def __init__(self, username, password, ssh_key, ssh_file=""):
+        self.username = username or ""
+        self.password = password or ""
         self.ssh_key = ssh_key
-
-    def authType(self):
-        if self.ssh_key != "":
-            return 'ssh'
-
-        return 'basic'
-
+        self.ssh_file = ssh_file
 
 class Repository:
     uri = ""
     branch = "main"
     verify_ssl = True
+    verify_host = True
 
     auth = Authentication("", "", "")
 
-    def __init__(self, uri, branch, verify):
+    def __init__(self, uri, branch, verify_ssl, verify_host=True):
         self.uri = uri
         self.branch = branch
-        self.verify_ssl = verify
+        self.verify_ssl = verify_ssl
+        self.verify_host = verify_host
+
+    def isSSH(self):
+
+        return not self.uri.startswith('https')
 
 
-def set_wiki_contents(host, repo, **kwargs):
+def set_wiki_contents(host, repo, keep_git=False, **kwargs):
     configure_wiki_repo(host, True, repo, **kwargs)
+    sync_wiki_repo(host, **kwargs)
     import_wiki_repo(host, **kwargs)
-    remove_git_repo(host, **kwargs)
+
+    if not keep_git:
+        _LOGGER.info('removing git repo from config')
+        remove_git_repo(host, **kwargs)
+
 
 
 def remove_git_repo(host, **kwargs):
@@ -253,7 +264,10 @@ def sync_wiki_repo(host, **kwargs):
         }
     }"""
 
+    _LOGGER.warning('Syncing all the wiki content from the git repository, this may take a while...')  # noqa: E501
     api_call(host, query, **kwargs)
+    _LOGGER.warning('Done syncing wiki content')
+
 
 
 def import_wiki_repo(host, **kwargs):
@@ -336,12 +350,14 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
     }"""
 
     variables = {"targets": [{
-            "isEnabled": enabled,
+            "isEnabled": True,
             "key": "git",
+            "mode": "pull",
+            "syncInterval": "PT5M",
             "config": [
                 {
                     "key": "authType",
-                    "value": f'{{"v": "{repo.auth.authType()}"}}'
+                    "value": f'{{"v": "{"ssh" if repo.isSSH() else "basic"}"}}'
                 }, {
                     "key": "repoUrl",
                     "value": f'{{"v": "{repo.uri}"}}'
@@ -359,13 +375,13 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
                     "value": f'{{"v": "{repo.auth.ssh_key}"}}'
                 }, {
                     "key": "verifySSL",
-                    "value": f'{{"v": "{repo.verify_ssl}"}}'
+                    "value": f'{{"v": {"true" if repo.verify_ssl else "false"}}}'
                 }, {
                     "key": "basicUsername",
-                    "value": f'{{"v": "{repo.auth.username}"}}'
+                    "value": f'{{"v": "{repo.auth.username if repo.auth.username is not None else "" }"}}'
                 }, {
                     "key": "basicPassword",
-                    "value": f'{{"v": "{repo.auth.password}"}}'
+                    "value": f'{{"v": "{repo.auth.password if repo.auth.password is not None else "" }"}}'
                 }, {
                     "key": "defaultEmail",
                     "value": '{ "v": "sci-oer@example.com"}'
@@ -379,9 +395,7 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
                     "key": "gitBinaryPath",
                     "value": '{ "v": ""}'
                 }
-            ],
-            "mode": "pull",
-            "syncInterval": "PT5M"
+            ]
         }
         ]
     }
@@ -412,8 +426,13 @@ def api_call(host, query, variables="{}", port=3000):
 
     r = requests.post(f'http://{host}:{port}/graphql', json=body, headers=headers)
 
-    if r.status_code == 200:
-        _LOGGER.info("Made change successfully")
+    payload = r.json()
+    payload = payload['data'][list(payload['data'].keys())[0]]
+    succeeded = payload[list(payload.keys())[0]]['responseResult']['succeeded']
+    message = payload[list(payload.keys())[0]]['responseResult']['message']
+
+    if r.status_code == 200 and succeeded:
+        _LOGGER.info(message or "API call was successful")
     else:
         _LOGGER.error(json.dumps(r.json(), indent=2))
         raise Exception(f"Query failed to run with a {r.status_code}.")
@@ -479,25 +498,42 @@ def main(opts, **kwargs):
     wait_for_wiki_to_be_ready(host, port)
 
     dir = setup_tmp_build()
-    
-    clone_repo(opts['jupyter_repo'], 'jupyter', dir.name)
-    clone_repo(opts['lectures_repo'], 'lectures', dir.name)
+
+    sshKey = load_ssh_key(opts['ssh_key'], opts['key_file'])
+
+    sshKeyFile = tempfile.NamedTemporaryFile(mode="w")
+    sshKeyFile.write(sshKey)
+    sshKeyFile.flush()
+
+    gitAuthentication = Authentication(opts["wiki_git_user"], opts["wiki_git_password"], sshKey.replace("\n","\\n"), sshKeyFile.name)
+
+    jupyterRepo = Repository(opts['jupyter_repo'], None, True, not opts['no_verify_host'])
+    jupyterRepo.auth = gitAuthentication
+
+    lecturesRepo = Repository(opts['lectures_repo'], None, True, not opts['no_verify_host'])
+    lecturesRepo.auth = gitAuthentication
+
+    clone_repo(jupyterRepo, 'jupyter', dir.name, keep_git=opts['keep_git'])
+    clone_repo(lecturesRepo, 'lectures', dir.name, keep_git=opts['keep_git'])
 
     examples = os.path.join(dir.name, 'practiceProblems')
     os.makedirs(examples, exist_ok=True)
     for example in opts['example']:
-        clone_repo(example, example.split('/')[-1][:-4], examples)
+        exampleRepo = Repository(example, None, True, not opts['no_verify_host'])
+        exampleRepo.auth = gitAuthentication
+        clone_repo(exampleRepo, example.split('/')[-1][:-4], examples, keep_git=opts['keep_git'])
     else:
         _LOGGER.info("no example repos were specified, skipping...")
 
-    if opts['wiki_repo'] is not None:
-        sshKey = load_ssh_key(opts['ssh_key'], opts['key_file'])
-        wikiRepo = Repository(opts['wiki_repo'], opts['wiki_branch'], not opts['wiki_no_verify'])
-        wikiRepo.auth = Authentication(opts['wiki_user'], opts['wiki_password'], sshKey)
+    if opts['wiki_git_repo'] is not None:
+        wikiRepo = Repository(opts['wiki_git_repo'], opts['wiki_git_branch'], not opts['wiki_git_no_verify'])
+        wikiRepo.auth = gitAuthentication
 
-        set_wiki_contents(host, wikiRepo, port=port)
+        set_wiki_contents(host, wikiRepo, port=port, keep_git=opts['keep_git'])
     else:
         _LOGGER.info('wiki content repository has not been set. skipping...')
+
+    sshKeyFile.close()
 
     set_wiki_title(host, opts['wiki_title'], port=port)
     dissable_api(host, port=port)
