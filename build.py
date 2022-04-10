@@ -15,7 +15,7 @@ Options:
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
 
 General git options:
-  --ssh-key=<private_key>           The SSH private key to use. WARNING: this will be passed in plain text, use a read-only key if possible.
+  --ssh-key=<private_key>           The contents of the SSH private key to use. WARNING: this will be passed in plain text, use a key that has read-only access if possible such as a deployment key.
   --key-file=<key_file>             The path to the ssh private key that should be used.
   --no-verify-host                  Sets the `StrictHostKeyChecking=no` option when cloning git repos, may be needed to non-interactivly accept git clones using ssh.
   --keep-git                        Will not remove the `.git` folder in repositories if this is set. This can be used to create an instructor version of the container.
