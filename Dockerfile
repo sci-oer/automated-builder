@@ -16,6 +16,8 @@ LABEL org.opencontainers.image.version="$VERSION"
 
 WORKDIR /app
 
+VOLUME [ "/output" ]
+
 COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 

@@ -15,15 +15,16 @@ Options:
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
 
 General git options:
-  --ssh-key=<private_key>           The contents of the SSH private key to use. WARNING: this will be passed in plain text, use a key that has read-only access if possible such as a deployment key.
+  --ssh-key=<private_key>           The contents of the SSH private key to use.
+                                    WARNING: this will be passed in plain text, use a key that has read-only access if possible such as a deployment key.
   --key-file=<key_file>             The path to the ssh private key that should be used.
   --no-verify-host                  Sets the `StrictHostKeyChecking=no` option when cloning git repos, may be needed to non-interactivly accept git clones using ssh.
   --keep-git                        Will not remove the `.git` folder in repositories if this is set. This can be used to create an instructor version of the container.
 
 WikiJS options:
   -w --wiki-git-repo=<wiki>         The git repository to fetch the wiki content from.
-  --wiki-git-user=<wiki_user>           The git username to use when cloning the the wikijs content.
-  --wiki-git-password=<wiki_pass>       The git password to use when cloning the wikiks content.
+  --wiki-git-user=<wiki_user>       The git username to use when cloning the the wikijs content.
+  --wiki-git-password=<wiki_pass>   The git password to use when cloning the wikiks content.
   --wiki-title=<title>              The title to use for the wiki website.
   --wiki-git-branch=<wiki_branch>   The name of the branch that the wiki content should be loaded from. [default: main]
   --wiki-git-no-verify              Do not verify the ssl certificate when cloning the wikijs wiki.
@@ -32,6 +33,9 @@ Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
   -b --base=<base>                  The base image to use [default: marshallasch/oo-resources:main]
   --no-pull                         Don't pull the base image first
+  --save-tar=<file name>            The name of the tar archive to export the image as.
+                                    If running in docker it will get put in the `/output` directory,
+                                    if the builder is being run on the host then it will be palced in the `./output` directory.
 
 Other interface options:
   -h --help                         Show this help message.
@@ -40,6 +44,7 @@ Other interface options:
   -d --debug                        Show debug log messages.
 """ # noqa E501
 
+from fileinput import filename
 import docker
 import random
 import string
@@ -187,9 +192,24 @@ def build_image(client, dir, tag="sci-oer:custom", base=None, **kwargs):
     }
 
     _LOGGER.info(f'Building custom image with name `{tag}`...')
-    client.images.build(path=dir, tag=tag, buildargs=args)
+    image, logs = client.images.build(path=dir, tag=tag, buildargs=args)
     _LOGGER.info('Done building custom image.')
 
+    return image
+
+def save_image(image, fileName, directory, **kwargs):
+
+    os.makedirs(directory, exist_ok=True)
+
+    tarFile = os.path.join(directory, fileName)
+
+    _LOGGER.info(f'Saving image to "{tarFile}"...')
+    f = open(tarFile, 'wb')
+    for chunk in image.save():
+        f.write(chunk)
+    f.close()
+
+    _LOGGER.info('Done saving image to tar file.')
 
 def extract_db(container, dir, **kwargs):
     _LOGGER.info('extracting wikijs database...')
@@ -250,7 +270,6 @@ def set_wiki_contents(host, repo, keep_git=False, **kwargs):
         remove_git_repo(host, **kwargs)
 
 
-
 def remove_git_repo(host, **kwargs):
     configure_wiki_repo(host, False, Repository("", "", ""),  **kwargs)
 
@@ -267,7 +286,6 @@ def sync_wiki_repo(host, **kwargs):
     _LOGGER.warning('Syncing all the wiki content from the git repository, this may take a while...')  # noqa: E501
     api_call(host, query, **kwargs)
     _LOGGER.warning('Done syncing wiki content')
-
 
 
 def import_wiki_repo(host, **kwargs):
@@ -546,7 +564,7 @@ def main(opts, **kwargs):
     delete_container(container)
     delete_volume(volume)
 
-    build_image(client, dir.name, tag=opts['tag'], base=opts['base'])
+    image = build_image(client, dir.name, tag=opts['tag'], base=opts['base'])
     cleanup_build(dir)
 
     if containerized:
@@ -554,6 +572,9 @@ def main(opts, **kwargs):
     network.remove()
 
     _LOGGER.info('Done.')
+
+    if opts['save_tar'] is not None:
+        save_image(image, opts['save_tar'], "/output" if containerized else "./output")
 
 
 if __name__ == "__main__":
