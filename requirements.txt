@@ -15,7 +15,7 @@ pluggy==1.0.0
 py==1.11.0
 pycodestyle==2.8.0
 pyflakes==2.4.0
-pyparsing==3.0.7
+pyparsing==3.0.9
 requests==2.27.1
 smmap==5.0.0
 tomli==2.0.1
