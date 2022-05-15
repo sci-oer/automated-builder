@@ -1,6 +1,5 @@
 FROM python:3
 
-
 LABEL org.opencontainers.version="v1.0.0"
 
 LABEL org.opencontainers.image.authors="Marshall Asch <masch@uoguelph.ca> (https://marshallasch.ca)"
@@ -24,7 +23,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENTRYPOINT [ "./entrypoint.sh" ]
-
 
 # these two labels will change every time the container is built
 # put them at the end because of layer caching
