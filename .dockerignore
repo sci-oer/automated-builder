@@ -6,3 +6,5 @@ renovate.json
 venv
 __pycache__
 .venv
+
+*.egg-info/
