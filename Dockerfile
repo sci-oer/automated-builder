@@ -17,10 +17,9 @@ WORKDIR /app
 
 VOLUME [ "/output" ]
 
-COPY requirements.txt requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
-
 COPY . .
+
+RUN pip install . && rm -rf custom src
 
 ENTRYPOINT [ "./entrypoint.sh" ]
 

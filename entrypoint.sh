@@ -5,6 +5,6 @@ if [[ "$1" == "bash" ]]; then
     exit 0
 else
     echo "run builder and pass through all options '$@'"
-    ./build.py "$@"
+    scioer-builder "$@"
     exit $?
 fi

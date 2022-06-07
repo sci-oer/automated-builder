@@ -6,8 +6,8 @@ This command will take the base sci-oer image and create a custom image pre fill
 with all the specified content.
 
 Usage:
-  ./build.py [options] [ --example=<examples>... ]
-  ./build.py (-h | --help)
+  scioer-builder [options] [ --example=<examples>... ]
+  scioer-builder (-h | --help)
 
 Options:
  -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from. The default branch will be used.
@@ -31,7 +31,7 @@ WikiJS options:
 
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
-  -b --base=<base>                  The base image to use [default: marshallasch/oo-resources:main]
+  -b --base=<base>                  The base image to use [default: marshallasch/java-resource:latest]
   --no-pull                         Don't pull the base image first
   --save-tar=<file name>            The name of the tar archive to export the image as.
                                     If running in docker it will get put in the `/output` directory,
@@ -64,14 +64,16 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import datetime
 
-from version import __version__  # noqa: I900
+import importlib.resources as pkg_resources
+
+from scioer_builder.version import __version__  # noqa: I900
 
 
 SSH_KEY_ENV = "SSH_KEY"
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
 
 
-# this is the api token that has been built into the base oo-resources container
+# this is the api token that has been built into the base-resource container
 API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
 
 _LOGGER = logging.getLogger(__name__)
@@ -183,9 +185,12 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
 
 def setup_tmp_build(**kwargs):
     dir = tempfile.TemporaryDirectory()
-    shutil.copy2(
-        os.path.join("custom", "Dockerfile"), os.path.join(dir.name, "Dockerfile")
-    )
+
+
+    with pkg_resources.path('scioer_builder.data', 'Dockerfile') as template:
+        shutil.copy2(
+            template, os.path.join(dir.name, "Dockerfile")
+        )
     return dir
 
 
@@ -494,7 +499,7 @@ def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
         _LOGGER.info("wiki is ready")
 
 
-def main(opts, **kwargs):
+def run(opts, **kwargs):
 
     client = docker.from_env()
 
@@ -601,10 +606,9 @@ def main(opts, **kwargs):
     if opts["save_tar"] is not None:
         save_image(image, opts["save_tar"], "/output" if containerized else "./output")
 
-
-if __name__ == "__main__":
-
+def main():
     args = docopt(__doc__)
+
 
     if args["--debug"]:
         args["--verbose"] = True
@@ -655,4 +659,8 @@ if __name__ == "__main__":
     opts = _make_opts(args)
     _LOGGER.info(opts)
 
-    main(opts)
+    run(opts)
+
+if __name__ == "__main__":
+    sys.exit(main())
+

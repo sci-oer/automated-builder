@@ -56,6 +56,14 @@ $ docker run -v /var/run/docker.sock:/var/run/docker.sock \
 
 **NOTE: If you are using the `--key-file` option when running with docker, the path that is specified must be the path in the container, not on the host machine~**
 
+### Installing with pip
+
+The auto builder script has been distributed to [pypi](https://pypi.org/) for easy use.
+It can be installed by running:
+```bash
+pip install scioer-builder
+```
+
 
 ### Running the `./build.py` Script Directly
 
