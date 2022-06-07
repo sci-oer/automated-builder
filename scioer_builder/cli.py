@@ -186,11 +186,8 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
 def setup_tmp_build(**kwargs):
     dir = tempfile.TemporaryDirectory()
 
-
-    with pkg_resources.path('scioer_builder.data', 'Dockerfile') as template:
-        shutil.copy2(
-            template, os.path.join(dir.name, "Dockerfile")
-        )
+    with pkg_resources.path("scioer_builder.data", "Dockerfile") as template:
+        shutil.copy2(template, os.path.join(dir.name, "Dockerfile"))
     return dir
 
 
@@ -606,9 +603,9 @@ def run(opts, **kwargs):
     if opts["save_tar"] is not None:
         save_image(image, opts["save_tar"], "/output" if containerized else "./output")
 
+
 def main():
     args = docopt(__doc__)
-
 
     if args["--debug"]:
         args["--verbose"] = True
@@ -661,6 +658,6 @@ def main():
 
     run(opts)
 
+
 if __name__ == "__main__":
     sys.exit(main())
-
