@@ -64,16 +64,6 @@ It can be installed by running:
 pip install scioer-builder
 ```
 
-
-### Running the `./build.py` Script Directly
-
-Alternatively the build command can be run directly.
-This still has the same system requirements.
-
-1. Install this repository. `git clone https://github.com/sci-oer/automated-builder.git`
-2. Install the dependencies. `pip3 install -r requirements.txt`
-3. Build the custom image. `./build.py <options>`
-
 ## Getting Help
 
 If you need help getting the builder script to work or have questions or find any issues you can open a [GitHub Issue](https://github.com/sci-oer/automated-builder/issues).
