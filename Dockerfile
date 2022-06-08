@@ -1,6 +1,6 @@
 FROM python:3
 
-LABEL org.opencontainers.version="v1.0.0"
+LABEL org.opencontainers.version="v0.1.0"
 
 LABEL org.opencontainers.image.authors="Marshall Asch <masch@uoguelph.ca> (https://marshallasch.ca)"
 LABEL org.opencontainers.image.url="https://github.com/sci-oer/automated-builder.git"
