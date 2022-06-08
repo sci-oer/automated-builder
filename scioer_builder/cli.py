@@ -522,7 +522,17 @@ def run(opts, **kwargs):
     port = get_wiki_port(containerized, container)
     host = "127.0.0.1" if not containerized else container.name
 
-    wait_for_wiki_to_be_ready(host, port)
+    try:
+        wait_for_wiki_to_be_ready(host, port)
+    except:
+        _LOGGER.error("Requests timed out, container failed to start.")
+
+        stop_container(container)
+        network.disconnect(container)
+
+        delete_container(container)
+        delete_volume(volume)
+        return
 
     dir = setup_tmp_build()
 
