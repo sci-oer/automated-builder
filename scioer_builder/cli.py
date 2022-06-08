@@ -515,7 +515,9 @@ def run(opts, **kwargs):
 
     volume = create_volume(client, "course")
     container = start_container(client, volume, opts["base"])
-    network.connect(container)
+
+    if containerized:
+        network.connect(container)
 
     container.reload()
 
@@ -528,7 +530,8 @@ def run(opts, **kwargs):
         _LOGGER.error("Requests timed out, container failed to start.")
 
         stop_container(container)
-        network.disconnect(container)
+        if containerized:
+            network.disconnect(container)
 
         delete_container(container)
         delete_volume(volume)
@@ -594,7 +597,8 @@ def run(opts, **kwargs):
     dissable_api(host, port=port)
 
     stop_container(container)
-    network.disconnect(container)
+    if containerized:
+        network.disconnect(container)
 
     extract_db(container, dir.name)
 
