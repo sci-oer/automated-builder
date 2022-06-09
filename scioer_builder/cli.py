@@ -573,7 +573,7 @@ def run(opts, **kwargs):
         exampleRepo.auth = gitAuthentication
         clone_repo(
             exampleRepo,
-            example.split("/")[-1][:-4] if len(opts["example"]) > 1 else '.',
+            example.split("/")[-1][:-4] if len(opts["example"]) > 1 else ".",
             examples,
             keep_git=opts["keep_git"],
         )
