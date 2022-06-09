@@ -567,12 +567,13 @@ def run(opts, **kwargs):
 
     examples = os.path.join(dir.name, "practiceProblems")
     os.makedirs(examples, exist_ok=True)
+
     for example in opts["example"]:
         exampleRepo = Repository(example, None, True, not opts["no_verify_host"])
         exampleRepo.auth = gitAuthentication
         clone_repo(
             exampleRepo,
-            example.split("/")[-1][:-4],
+            example.split("/")[-1][:-4] if len(opts["example"]) > 1 else '.',
             examples,
             keep_git=opts["keep_git"],
         )
