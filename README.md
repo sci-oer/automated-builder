@@ -44,14 +44,15 @@ This script will create a sci-oer image that is customized with the following:
 - a customized wiki title
 
 There are a number of configuration options that can be specified when building the customized container.
-Run `./build.py --help` to see a complete list of configuration options and how they can be used.
+Run `scioer-builder --help` to see a complete list of configuration options and how they can be used.
 
 All the options are optional, if one is left out then no content will be configured.
 
-There are currently two methods that can be used to create a customized image.
+There are currently three methods that can be used to create a customized image.
 
-1. Using a prebuilt docker command
-2. running the `./build.py` script directly
+1. Using the published `scioer-builder` package (preferred)
+2. Using a prebuilt docker image
+3. Calling the `scioer_builder/cli.py` script directly
 
 ### Using Docker
 
@@ -67,12 +68,19 @@ $ docker run -v /var/run/docker.sock:/var/run/docker.sock \
 
 **NOTE: If you are using the `--key-file` option when running with docker, the path that is specified must be the path in the container, not on the host machine**
 
-### Installing with pip
+### Using the pip package
 
 The auto builder script has been distributed to [pypi](https://pypi.org/) for easy use.
 It can be installed by running:
+
 ```bash
 pip install scioer-builder
+```
+
+Then run as a normal command:
+
+```bash
+scioer-builder --help
 ```
 
 ## Getting Help
