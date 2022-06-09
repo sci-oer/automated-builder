@@ -1,6 +1,6 @@
 FROM python:3
 
-LABEL org.opencontainers.version="v0.1.0"
+LABEL org.opencontainers.version="v1.0.0"
 
 LABEL org.opencontainers.image.authors="Marshall Asch <masch@uoguelph.ca> (https://marshallasch.ca)"
 LABEL org.opencontainers.image.url="https://github.com/sci-oer/automated-builder.git"
@@ -10,7 +10,7 @@ LABEL org.opencontainers.image.licenses="GPL-3.0-only"
 LABEL org.opencontainers.image.title="Offline Course Resouce"
 LABEL org.opencontainers.image.description="This image is can be used to build customized oo-resources image. This will generate a customized image with pre seeded data."
 
-ARG VERSION=v1.0.0
+ARG VERSION=v0.1.0
 LABEL org.opencontainers.image.version="$VERSION"
 
 WORKDIR /app

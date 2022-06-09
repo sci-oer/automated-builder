@@ -4,7 +4,7 @@
 ![GitHub](https://img.shields.io/github/license/sci-oer/automated-builder?style=plastic)
 
 
-This is an automated build tool to generate customized versions of the [oo-resources](https://github.com/sci-oer/oo-resources) image.
+This is an automated build tool to generate customized versions of the language specific versions of the [base-resources](https://github.com/sci-oer/base-resources) images.
 
 Typically, a customized docker image can be created by extending a `Dockerfile` with the new modifications and setup script and your good to go.
 However, some of the tools that are prepackaged in this container can not be customized and configured without the services running (wiki-js).
@@ -22,6 +22,17 @@ The build script will start a docker container in the background, so it can be c
 The user that is running the build script must have permissions to run docker commands.
 
 Git must be installed in-order to load and configure the seeded content.
+
+## Building this Docker Image
+
+This image has been published to [Docker Hub](https://hub.docker.com/r/marshallasch/automated-builder), but the follow command can be used to build the image locally.
+
+```bash
+docker build \
+    --build-arg GIT_COMMIT=$(git rev-parse -q --verify HEAD) \
+    --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+    -t marshallasch/automated-builder:latest .
+```
 
 ## Creating a Custom Image
 
@@ -50,11 +61,11 @@ For the `automated-builder` container to be able to create the custom docker ima
 
 ```bash
 $ docker run -v /var/run/docker.sock:/var/run/docker.sock \
-    marshallasch/automated-builder:main <options here>
+    marshallasch/automated-builder:latest <options here>
 ```
 
 
-**NOTE: If you are using the `--key-file` option when running with docker, the path that is specified must be the path in the container, not on the host machine~**
+**NOTE: If you are using the `--key-file` option when running with docker, the path that is specified must be the path in the container, not on the host machine**
 
 ### Installing with pip
 
