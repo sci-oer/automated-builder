@@ -66,7 +66,7 @@ import datetime
 
 import importlib.resources as pkg_resources
 
-from scioer_builder.__version__ import __version__  # noqa: I900
+from .__version__ import __version__  # noqa: I900
 
 
 SSH_KEY_ENV = "SSH_KEY"
@@ -637,7 +637,7 @@ def main():
     _LOGGER.debug("platform: %s", platform.platform())
 
     if args["--version"]:
-        print(__version__)
+        print(f"scioer-builder: {__version__}")
         sys.exit(0)
 
     opts = _make_opts(args)
