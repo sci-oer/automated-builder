@@ -66,7 +66,7 @@ import datetime
 
 import importlib.resources as pkg_resources
 
-from scioer_builder.version import __version__  # noqa: I900
+from scioer_builder.__version__ import __version__  # noqa: I900
 
 
 SSH_KEY_ENV = "SSH_KEY"
@@ -86,34 +86,6 @@ def _make_opts(args):
         opt = arg.replace("--", "").replace("-", "_")
         opts[opt] = val
     return opts
-
-
-def _get_git_version():
-    """Check that `git` is accessible and return its version."""
-    try:
-        return subprocess.check_output(["git", "--version"]).strip().decode()
-    except FileNotFoundError:
-        return None
-
-
-def _gen_version():
-    extra = ""
-    if _get_git_version() and os.path.isdir(".git"):
-        rev_parse = (
-            subprocess.check_output(["git", "rev-parse", "HEAD"]).strip().decode()
-        )
-        describe = (
-            subprocess.check_output(["git", "describe", "--always", "--dirty"])
-            .strip()
-            .decode()
-        )  # noqa: E501
-
-        extra = rev_parse[:12]
-        extra += "-dirty" if describe.endswith("-dirty") else ""
-
-        extra = f" ({extra})"
-
-    return f"autobuild v{__version__}{extra}"
 
 
 def fetch_latest(client, repository, **kwargs):
@@ -661,11 +633,11 @@ def main():
     log_handler.setFormatter(log_fmtter)
     logging.basicConfig(level=log_level, handlers=[log_handler])
 
-    _LOGGER.debug("version: %s", _gen_version())
+    _LOGGER.debug("version: %s", __version__)
     _LOGGER.debug("platform: %s", platform.platform())
 
     if args["--version"]:
-        print(_gen_version())
+        print(__version__)
         sys.exit(0)
 
     opts = _make_opts(args)
