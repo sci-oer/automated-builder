@@ -158,7 +158,7 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
 def setup_tmp_build(**kwargs):
     dir = tempfile.TemporaryDirectory()
 
-    with pkg_resources.path("scioer_builder.data", "Dockerfile") as template:
+    with pkg_resources.path("builder.data", "Dockerfile") as template:
         shutil.copy2(template, os.path.join(dir.name, "Dockerfile"))
     return dir
 
