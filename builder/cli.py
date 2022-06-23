@@ -551,6 +551,7 @@ def run(opts, **kwargs):
             examples,
             keep_git=opts["keep_git"],
         )
+        break
     else:
         _LOGGER.info("no example repos were specified, skipping...")
 
