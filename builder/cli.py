@@ -144,6 +144,8 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
         os.mkdir(folder)
         _LOGGER.info(f'no repository specified for "{name}", skipping...')
         return
+    else:
+        _LOGGER.info(f'cloning repository; "{name}"...')
 
     git_ssh_cmd = ""
     if repo.isSSH():
