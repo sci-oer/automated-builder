@@ -1,0 +1,103 @@
+name: Create and Tag Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Semver version to tag. One of patch|minor|major.'
+        required: false
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+
+jobs:
+  bump_semver:
+    name: Bump Semantic Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.new }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Cache binaries
+      id: cache-bin
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-semver
+      with:
+        path: bin
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('bin/semver') }}
+        restore-keys: |
+          ${{ runner.os }}-build-${{ env.cache-name }}-
+          ${{ runner.os }}-build-
+          ${{ runner.os }}-
+
+    - name: Setup semver
+      if: steps.cache-bin.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p bin
+        wget -O bin/semver \
+          https://raw.githubusercontent.com/fsaintjacques/semver-tool/3.2.0/src/semver
+        chmod +x bin/semver
+
+    - name: Setup PATH
+      run: |
+        echo "$GITHUB_WORKSPACE/bin" >> "$GITHUB_PATH"
+
+    - name: Compute versions
+      id: get_version
+      run: |
+        current_ver="$(git describe --abbrev=0 --tags)"
+        new_ver=$(semver bump "${{ github.event.inputs.version }}" "$current_ver")
+        echo "::set-output name=last::${current_ver}"
+        echo "::set-output name=new::${new_ver}"
+
+    - name: Update release
+      id: bump_version
+      shell: bash
+      run: |
+          sed -i "s/${{ steps.get_version.outputs.last }}/${{ steps.get_version.outputs.new }}/g" "builder/__version__.py"
+
+    - name: "Generate release changelog"
+      id: generate-changelog
+      uses: heinrichreimer/github-changelog-generator-action@v2.3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        futureRelease: "v${{ steps.get_version.outputs.new }}"
+        releaseBranch: main
+        enhancementLabels: 'type: feature request'
+        bugLabels: 'type: bug'
+        excludeLabels: 'duplicate,status: wontfix,type: question,type: support'
+        releaseUrl: 'https://github.com/sci-oer/automated-builder/releases/%s'
+
+    - name: Save changelog
+      run: |
+        echo "${{ steps.generate-changelog.outputs.changelog }}" > CHANGELOG.md
+
+    - name: Commit changes
+      id: git_commit
+      run: |
+        git config user.email '<>'
+        git config user.name github-actions
+        git add CHANGELOG.md
+        git commit -m "v${{ steps.get_version.outputs.new }}" --all
+        git tag "${{ steps.get_version.outputs.new }}" -m "v${{ steps.get_version.outputs.new }}" && \
+        git push --follow-tags origin main
+
+  publish_release:
+    runs-on: ubuntu-latest
+    needs: bump_semver
+    permissions:
+      contents: write  # for release-drafter/release-drafter to create a github release
+      pull-requests: write  # for release-drafter/release-drafter to add label to PR
+    steps:
+    - uses: release-drafter/release-drafter@v5
+      with:
+        tag: "${{ needs.bump_semver.outputs.version }}"
+        version: "v${{ needs.bump_semver.outputs.version }}"
+        publish: true
+
