@@ -22,6 +22,9 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v3
+    - name: pull tags
+      run: |
+        git fetch --all --tags
 
     - name: Cache binaries
       id: cache-bin
