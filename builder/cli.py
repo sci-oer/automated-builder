@@ -15,8 +15,6 @@ Options:
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
 
 General git options:
-  --ssh-key=<private_key>           The contents of the SSH private key to use.
-                                    WARNING: this will be passed in plain text, use a key that has read-only access if possible such as a deployment key.
   --key-file=<key_file>             The path to the ssh private key that should be used.
   --no-verify-host                  Sets the `StrictHostKeyChecking=no` option when cloning git repos, may be needed to non-interactivly accept git clones using ssh.
   --keep-git                        Will not remove the `.git` folder in repositories if this is set. This can be used to create an instructor version of the container.
@@ -55,6 +53,7 @@ import shutil
 import platform
 import requests
 import json
+import stat
 from git import Repo  # noqa: I900
 from docopt import docopt
 import subprocess
@@ -69,7 +68,6 @@ import importlib.resources as pkg_resources
 from .__version__ import __version__  # noqa: I900
 
 
-SSH_KEY_ENV = "SSH_KEY"
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
 
 
@@ -96,8 +94,12 @@ def fetch_latest(client, repository, **kwargs):
     _LOGGER.info("Done pulling the latest docker image")
 
 
-def start_container(client, volume, image, **kwargs):
+def start_container(client, volume, image, keyFile, **kwargs):
     name = f"auto-build-tmp-{generate_random_string()}"
+
+    volumes = [f"{volume.name}:/course"]
+    if keyFile[0] != "" and keyFile[1] != "":
+        volumes.append(f"{keyFile[0]}:{keyFile[1]}:ro")
 
     _LOGGER.info(f"starting `{image}` container as `{name}`...")
     onHost = not check_if_container(client)
@@ -107,7 +109,7 @@ def start_container(client, volume, image, **kwargs):
         name=name,
         tty=True,
         detach=True,
-        volumes=[f"{volume.name}:/course"],
+        volumes=volumes,
     )
 
     return container
@@ -218,15 +220,13 @@ def get_current_container(client, **kwargs):
 
 
 class Authentication:
-    ssh_key = ""
     username = ""
     password = ""
     ssh_file = ""
 
-    def __init__(self, username, password, ssh_key, ssh_file=""):
+    def __init__(self, username, password, ssh_file=""):
         self.username = username or ""
         self.password = password or ""
-        self.ssh_key = ssh_key
         self.ssh_file = ssh_file
 
 
@@ -236,7 +236,7 @@ class Repository:
     verify_ssl = True
     verify_host = True
 
-    auth = Authentication("", "", "")
+    auth = Authentication("", "")
 
     def __init__(self, uri, branch, verify_ssl, verify_host=True):
         self.uri = uri
@@ -245,7 +245,6 @@ class Repository:
         self.verify_host = verify_host
 
     def isSSH(self):
-
         return not self.uri.startswith("https")
 
 
@@ -312,26 +311,19 @@ def set_wiki_title(host, title, **kwargs):
     api_call(host, query, variables={"title": title}, **kwargs)
 
 
-def load_ssh_key(keyValue, keyFile):
+def load_ssh_key(keyFile):
 
-    env_key = os.getenv(SSH_KEY_ENV)
     env_key_file = os.getenv(SSH_KEY_FILE_ENV)
 
     keyFileContents = load_ssh_key_from_file(keyFile)
     envKeyFileContents = load_ssh_key_from_file(env_key_file)
 
-    if keyValue is not None:
-        _LOGGER.debug("Using ssh key specified with cli key flag")
-        return keyValue
-    elif keyFileContents != "":
+    if keyFileContents != "":
         _LOGGER.debug("Using ssh key specified with cli keyfile flag")
-        return keyFileContents
-    elif env_key is not None:
-        _LOGGER.debug(f"Using ssh key specified with {SSH_KEY_ENV} env variable")
-        return env_key
+        return keyFile
     elif envKeyFileContents != "":
         _LOGGER.debug(f"Using ssh key specified with {SSH_KEY_FILE_ENV} env variable")
-        return envKeyFileContents
+        return env_key_file
     else:
         _LOGGER.debug("no ssh key has been specified")
         return ""
@@ -344,6 +336,7 @@ def load_ssh_key_from_file(keyFile):
         return ""
 
     with open(keyFile, "r") as f:
+        _LOGGER.info(f"found ssh key file: `{keyFile}`")
         return f.read()
 
 
@@ -374,11 +367,17 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
                     },
                     {"key": "repoUrl", "value": f'{{"v": "{repo.uri}"}}'},
                     {"key": "branch", "value": f'{{"v": "{repo.branch}"}}'},
-                    {"key": "sshPrivateKeyMode", "value": '{"v": "contents"}'},
-                    {"key": "sshPrivateKeyPath", "value": '{"v": ""}'},
+                    {
+                        "key": "sshPrivateKeyMode",
+                        "value": '{"v": "path"}',
+                    },
+                    {
+                        "key": "sshPrivateKeyPath",
+                        "value": f'{{"v": "{repo.auth.ssh_file}"}}',
+                    },
                     {
                         "key": "sshPrivateKeyContent",
-                        "value": f'{{"v": "{repo.auth.ssh_key}"}}',
+                        "value": '{"v": ""}',
                     },
                     {
                         "key": "verifySSL",
@@ -470,9 +469,37 @@ def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
         _LOGGER.info("wiki is ready")
 
 
+def get_real_key_path(container, keyName):
+
+    mounts = [m for m in container.attrs["Mounts"] if m["Destination"] == keyName]
+
+    if len(mounts) != 0:
+        return mounts[0]["Source"]
+    return ""
+
+
 def run(opts, **kwargs):
 
-    client = docker.from_env()
+    # Checking incompatible arguments
+
+    if opts["lectures_repo"] is not None and opts["lectures_directory"] is not None:
+        _LOGGER.error(
+            "Cannot specify both `--lectures-repo` and `--lectures-directory`, only one can be used at a time."
+        )
+        sys.exit("Incompatible arguments")
+
+    sshKeyFile = load_ssh_key(opts["key_file"])
+    if sshKeyFile != "":
+        sshKeyFile = os.path.realpath(sshKeyFile)
+
+    # starting main builder logic
+    try:
+        client = docker.from_env()
+    except:
+        _LOGGER.error(
+            "failed to connect to docker, check that Docker is running on the host."
+        )
+        sys.exit("Docker is not running")
 
     if not opts["no_pull"]:
         fetch_latest(client, opts["base"])
@@ -482,13 +509,21 @@ def run(opts, **kwargs):
     this = None
     containerized = check_if_container(client)
 
+    realKey = sshKeyFile
     if containerized:
         _LOGGER.debug("Currently running in a docker container")
         this = get_current_container(client)
         network.connect(this)
 
+        realKey = get_real_key_path(this, opts["key_file"])
+
     volume = create_volume(client, "course")
-    container = start_container(client, volume, opts["base"])
+    container = start_container(
+        client,
+        volume,
+        opts["base"],
+        [realKey, sshKeyFile],
+    )
 
     if containerized:
         network.connect(container)
@@ -513,17 +548,10 @@ def run(opts, **kwargs):
 
     dir = setup_tmp_build()
 
-    sshKey = load_ssh_key(opts["ssh_key"], opts["key_file"])
-
-    sshKeyFile = tempfile.NamedTemporaryFile(mode="w")
-    sshKeyFile.write(sshKey)
-    sshKeyFile.flush()
-
     gitAuthentication = Authentication(
         opts["wiki_git_user"],
         opts["wiki_git_password"],
-        sshKey.replace("\n", "\\n"),
-        sshKeyFile.name,
+        sshKeyFile,
     )
 
     jupyterRepo = Repository(
@@ -566,8 +594,6 @@ def run(opts, **kwargs):
         set_wiki_contents(host, wikiRepo, port=port, keep_git=opts["keep_git"])
     else:
         _LOGGER.info("wiki content repository has not been set. skipping...")
-
-    sshKeyFile.close()
 
     set_wiki_title(host, opts["wiki_title"], port=port)
     dissable_api(host, port=port)
