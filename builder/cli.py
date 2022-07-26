@@ -12,6 +12,7 @@ Usage:
 Options:
  -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from. The default branch will be used.
  -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content. The default branch will be used.
+ --lectures-directory=<lecture>     A path to the directory containing the builtin lessons content. Cannot be used with `--lectures-repo`.
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
 
 General git options:
@@ -537,7 +538,11 @@ def run(opts, **kwargs):
     lecturesRepo.auth = gitAuthentication
 
     clone_repo(jupyterRepo, "jupyter", dir.name, keep_git=opts["keep_git"])
-    clone_repo(lecturesRepo, "lectures", dir.name, keep_git=opts["keep_git"])
+
+    if opts["lectures_directory"]:
+        shutil.copytree(opts["lectures_directory"], os.path.join(dir.name, "lectures"))
+    else:
+        clone_repo(lecturesRepo, "lectures", dir.name, keep_git=opts["keep_git"])
 
     examples = os.path.join(dir.name, "practiceProblems")
     os.makedirs(examples, exist_ok=True)
