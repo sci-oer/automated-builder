@@ -23,6 +23,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
       with:
+        persist-credentials: false
         fetch-depth: 0
 
     - name: Cache binaries
@@ -89,8 +90,14 @@ jobs:
         git config user.name github-actions
         git add CHANGELOG.md
         git commit -m "v${{ steps.get_version.outputs.new }}" --all
-        git tag "${{ steps.get_version.outputs.new }}" -m "v${{ steps.get_version.outputs.new }}" && \
-        git push --follow-tags origin main
+        git tag "v${{ steps.get_version.outputs.new }}" -m "v${{ steps.get_version.outputs.new }}"
+
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GH_ACCESS_TOKEN }}
+        branch: ${{ github.ref }}
+        tags: true
 
   publish_release:
     runs-on: ubuntu-latest
@@ -100,6 +107,8 @@ jobs:
       pull-requests: write  # for release-drafter/release-drafter to add label to PR
     steps:
     - uses: release-drafter/release-drafter@v5
+      env:
+          GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
       with:
         tag: "${{ needs.bump_semver.outputs.version }}"
         version: "v${{ needs.bump_semver.outputs.version }}"
