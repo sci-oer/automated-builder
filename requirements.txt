@@ -1,6 +1,6 @@
 attrs==22.1.0
 certifi==2022.5.18.1
-charset-normalizer==2.0.12
+charset-normalizer==2.1.0
 colorlog==6.6.0
 docker==5.0.3
 docopt==0.6.2
