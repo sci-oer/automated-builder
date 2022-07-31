@@ -18,7 +18,7 @@ jobs:
     name: Bump Semantic Version
     runs-on: ubuntu-latest
     outputs:
-      version: "v${{ steps.get_version.outputs.new }}"
+      version: "${{ steps.get_version.outputs.new }}"
     steps:
     - name: Checkout
       uses: actions/checkout@v3
