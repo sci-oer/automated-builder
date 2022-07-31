@@ -90,14 +90,12 @@ jobs:
         git config user.name github-actions
         git add CHANGELOG.md
         git commit -m "v${{ steps.get_version.outputs.new }}" --all
-        git tag "v${{ steps.get_version.outputs.new }}" -m "v${{ steps.get_version.outputs.new }}"
 
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GH_ACCESS_TOKEN }}
         branch: ${{ github.ref }}
-        tags: true
 
   publish_release:
     runs-on: ubuntu-latest
