@@ -56,23 +56,23 @@ import shutil
 import platform
 import requests
 import json
-import stat
-from git import Repo  # noqa: I900
+
 from docopt import docopt
-import subprocess
 import colorlog
 import logging
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 import datetime
-
 import importlib.resources as pkg_resources
+
+try:
+    from git import Repo  # noqa: I900
+except:
+    sys.exit("Can not run, `git` must be installed on the system.")
 
 from .__version__ import __version__  # noqa: I900
 
-
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
-
 
 # this is the api token that has been built into the base-resource container
 API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
