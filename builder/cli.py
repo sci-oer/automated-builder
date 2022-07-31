@@ -29,9 +29,11 @@ WikiJS options:
   --wiki-git-no-verify              Do not verify the ssl certificate when cloning the wikijs wiki.
 
 Docker options:
-  -t --tag=<tag>                    The docker tag to use for the generated image. [default: sci-oer/custom:latest]
+  -t --tag=<tag>                    The docker tag to use for the generated image. This should exclude the registry portion. [default: sci-oer/custom:latest]
   -b --base=<base>                  The base image to use [default: marshallasch/java-resource:latest]
+  --registry=<url>                  The url of a docker registry to push the image to
   --no-pull                         Don't pull the base image first
+  --no-push                         Don't push the image to a remote registry.
   --save-tar=<file name>            The name of the tar archive to export the image as.
                                     If running in docker it will get put in the `/output` directory,
                                     if the builder is being run on the host then it will be palced in the `./output` directory.
@@ -134,6 +136,18 @@ def generate_random_string(length=10):
 def create_volume(client, name):
     return client.volumes.create(f"{name}-{generate_random_string()}")
 
+def push_image(client: docker.client, registry: string, image: docker.models.images.Image):
+
+    toPush = image.tags[0]
+    if registry is not None:
+        toPush = f'{registry}/{toPush}'
+        image.tag(toPush)
+
+    try:
+        # this can also return a generator to be used for a progress bar
+        client.images.push(toPush)
+    except:
+        _LOGGER.error("Failed to push the image to the registry, are you sure you have properly authenticated with the remote registry")
 
 def delete_volume(volume, **kwargs):
     _LOGGER.info("Deleteing setup volume...")
@@ -624,6 +638,8 @@ def run(opts, **kwargs):
     if opts["save_tar"] is not None:
         save_image(image, opts["save_tar"], "/output" if containerized else "./output")
 
+    if not opts["no_push"]:
+        push_image(client, opts['registry'], image)
 
 def main():
     args = docopt(__doc__)
