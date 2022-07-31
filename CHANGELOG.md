@@ -1,8 +1,26 @@
 # Changelog
 
-## [2.1.2](https://github.com/sci-oer/automated-builder/releases/2.1.2) (2022-07-22)
+## [v0.2.0](https://github.com/sci-oer/automated-builder/releases/v0.2.0) (2022-07-31)
 
-[Full Changelog](https://github.com/sci-oer/automated-builder/compare/5031ac982e8ac94b04d30b8ad0f7ad625227d7fa...2.1.2)
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.1.2...v0.2.0)
+
+**Breaking changes:**
+
+- fix!: fixed ssh key loading, removed support for specifying the ssh private key in plain text [\#88](https://github.com/sci-oer/automated-builder/pull/88) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Implemented enhancements:**
+
+- Import lectures from local directory [\#71](https://github.com/sci-oer/automated-builder/issues/71)
+- feat: import lectures from local directory or from git repo [\#87](https://github.com/sci-oer/automated-builder/pull/87) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- \[BUG\] ssh key path only worked with public keys [\#85](https://github.com/sci-oer/automated-builder/issues/85)
+- \[BUG\] ssh key does not accept absolute paths  [\#84](https://github.com/sci-oer/automated-builder/issues/84)
+
+## [v0.1.2](https://github.com/sci-oer/automated-builder/releases/v0.1.2) (2022-06-23)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/5031ac982e8ac94b04d30b8ad0f7ad625227d7fa...v0.1.2)
 
 **Implemented enhancements:**
 
