@@ -18,7 +18,7 @@ jobs:
     name: Bump Semantic Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.get_version.outputs.new }}
+      version: "v${{ steps.get_version.outputs.new }}"
     steps:
     - name: Checkout
       uses: actions/checkout@v3
@@ -54,7 +54,7 @@ jobs:
     - name: Compute versions
       id: get_version
       run: |
-        current_ver="$(git describe --abbrev=0 --tags)"
+        current_ver="$(git describe --abbrev=0 --tags | sed 's/v//')"
         new_ver=$(semver bump "${{ github.event.inputs.version }}" "$current_ver")
         echo "::set-output name=last::${current_ver}"
         echo "::set-output name=new::${new_ver}"
@@ -110,7 +110,7 @@ jobs:
       env:
           GITHUB_TOKEN: ${{ secrets.GH_ACCESS_TOKEN }}
       with:
-        tag: "${{ needs.bump_semver.outputs.version }}"
+        tag: "v${{ needs.bump_semver.outputs.version }}"
         version: "v${{ needs.bump_semver.outputs.version }}"
         publish: true
 
