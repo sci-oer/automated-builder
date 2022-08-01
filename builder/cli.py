@@ -43,9 +43,9 @@ Other interface options:
   -V --version                      Show the current version.
   -v --verbose                      Show verbose log messages.
   -d --debug                        Show debug log messages.
+  -i --interactive                  Interactivly prompt for all of the options.
 """  # noqa E501
 
-from fileinput import filename
 import docker
 import random
 import string
@@ -56,6 +56,7 @@ import shutil
 import platform
 import requests
 import json
+import copy
 
 from docopt import docopt
 import colorlog
@@ -71,6 +72,7 @@ except:
     sys.exit("Can not run, `git` must be installed on the system.")
 
 from .__version__ import __version__  # noqa: I900
+from .prompt import prompt, yesno, prompt_list
 
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
 
@@ -87,6 +89,105 @@ def _make_opts(args):
         opt = arg.replace("--", "").replace("-", "_")
         opts[opt] = val
     return opts
+
+
+def ask_interactive(opts):
+    input = copy.deepcopy(opts)
+
+    # general image setup  information
+    print("## Information about the container to be built.")
+    input["tag"] = prompt(
+        "Enter the name of the image to be built, including the tag: ",
+        default=input["tag"],
+    )
+    input["base"] = prompt(
+        "Enter the base image that should be used for this course:",
+        default=input["base"],
+    )
+    input["no_pull"] = not yesno(
+        "Should a the latest base image be fetched?",
+        default="no" if input["no_pull"] else "yes",
+    )
+
+    input["no_push"] = not yesno(
+        "Do you want to push the generated image to a docker registry?",
+        default="no" if input["no_push"] else "yes",
+    )
+    if not input["no_push"]:
+        input["registry"] = prompt(
+            "Enter the registry that the generated should be pushed too (leave blank for dockerhub):",
+            default=input["registry"],
+        )
+
+    input["save_tar"] = prompt(
+        "Enter name of the tar file of the generated image to save (leave blank if you do not want to save it):",
+        default=input["save_tar"],
+    )
+
+    print("")
+    print("## General options for cloning git repositories.")
+    input["no_verify_host"] = yesno(
+        "Should the SSH host keys be verified?",
+        default="no" if input["no_verify_host"] else "yes",
+    )
+    input["keep_git"] = yesno(
+        "Should the git histories be kept after they are cloned?",
+        default="yes" if input["keep_git"] else "no",
+    )
+    input["key_file"] = prompt(
+        "Enter the path to the SSH private key used to clone the git repos if one is being used:",
+        default=input["key_file"],
+    )
+
+    print("")
+    print("## Information about the wiki to be created.")
+    input["wiki_title"] = prompt(
+        "Enter the title for the Wiki:", default=input["wiki_title"]
+    )
+    input["wiki_git_repo"] = prompt(
+        "Enter the git repository URL for the wiki:", default=input["wiki_git_repo"]
+    )
+    input["wiki_git_branch"] = prompt(
+        "Enter the branch name for the wiki repository:",
+        default=input["wiki_git_branch"],
+    )
+
+    isSSH = yesno("Do you want to clone the wiki repository using ssh?", default="yes")
+    if not isSSH:
+        input["wiki_git_user"] = prompt(
+            "Enter the git username for cloning the wiki contents:",
+            default=input["wiki_git_user"],
+        )
+        input["wiki_git_password"] = prompt(
+            "Enter the git password for cloning the wiki contents",
+            default=input["wiki_git_password"],
+        )
+
+    input["wiki_git_no_verify"] = yesno(
+        "Should the SSL certificates be verified when cloning the wiki?",
+        default="no" if input["wiki_git_no_verify"] else "yes",
+    )
+
+    print("")
+    print("## Where the rest of the content is being loaded from.")
+    input["jupyter_repo"] = prompt(
+        "Enter the git repository that holds the Jupyter Notebook files (leave blank if not being used)",
+        default=input["jupyter_repo"],
+    )
+    input["lectures_repo"] = prompt(
+        "Enter the git repository that holds the Jupyter Lecture video files (leave blank if not being used)",
+        default=input["lectures_repo"],
+    )
+    input["lectures_directory"] = prompt(
+        "Enter the directory that contains the Jupyter Lecture video files (leave blank if not being used)",
+        default=input["lectures_directory"],
+    )
+
+    input["example"] = prompt_list(
+        "Enter a git repository that contains an example project"
+    )
+
+    return input
 
 
 def fetch_latest(client, repository, **kwargs):
@@ -136,18 +237,24 @@ def generate_random_string(length=10):
 def create_volume(client, name):
     return client.volumes.create(f"{name}-{generate_random_string()}")
 
-def push_image(client: docker.client, registry: string, image: docker.models.images.Image):
+
+def push_image(
+    client: docker.client, registry: string, image: docker.models.images.Image
+):
 
     toPush = image.tags[0]
     if registry is not None:
-        toPush = f'{registry}/{toPush}'
+        toPush = f"{registry}/{toPush}"
         image.tag(toPush)
 
     try:
         # this can also return a generator to be used for a progress bar
         client.images.push(toPush)
     except:
-        _LOGGER.error("Failed to push the image to the registry, are you sure you have properly authenticated with the remote registry")
+        _LOGGER.error(
+            "Failed to push the image to the registry, are you sure you have properly authenticated with the remote registry"
+        )
+
 
 def delete_volume(volume, **kwargs):
     _LOGGER.info("Deleteing setup volume...")
@@ -639,7 +746,8 @@ def run(opts, **kwargs):
         save_image(image, opts["save_tar"], "/output" if containerized else "./output")
 
     if not opts["no_push"]:
-        push_image(client, opts['registry'], image)
+        push_image(client, opts["registry"], image)
+
 
 def main():
     args = docopt(__doc__)
@@ -693,6 +801,9 @@ def main():
     opts = _make_opts(args)
     _LOGGER.info(opts)
 
+    if opts["interactive"]:
+        opts = ask_interactive(opts)
+        _LOGGER.info(opts)
     run(opts)
 
 
