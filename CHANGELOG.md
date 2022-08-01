@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.3.1](https://github.com/sci-oer/automated-builder/releases/v0.3.1) (2022-08-01)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.3.0...v0.3.1)
+
+**Fixed bugs:**
+
+- fix: add manifest file to include dockerfile in sdist [\#101](https://github.com/sci-oer/automated-builder/pull/101) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.3.0](https://github.com/sci-oer/automated-builder/releases/v0.3.0) (2022-08-01)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.2.1...v0.3.0)
