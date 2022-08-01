@@ -1,5 +1,49 @@
 # Changelog
 
+## [v0.3.0](https://github.com/sci-oer/automated-builder/releases/v0.3.0) (2022-08-01)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.2.1...v0.3.0)
+
+**Implemented enhancements:**
+
+- Add interactive mode for the auto builder [\#96](https://github.com/sci-oer/automated-builder/issues/96)
+- Check to make sure docker is running before starting, issue warning if it is not.  [\#83](https://github.com/sci-oer/automated-builder/issues/83)
+- add workflow to automatically increase the semantic version number [\#70](https://github.com/sci-oer/automated-builder/issues/70)
+- add workflow to automatically create a GH release [\#69](https://github.com/sci-oer/automated-builder/issues/69)
+- add workflow to deploy pip package [\#68](https://github.com/sci-oer/automated-builder/issues/68)
+- Create Changelog [\#67](https://github.com/sci-oer/automated-builder/issues/67)
+- Pass ssh private key as volume mount to sci-oer container [\#51](https://github.com/sci-oer/automated-builder/issues/51)
+- Automatically upload the image to a specified registry [\#44](https://github.com/sci-oer/automated-builder/issues/44)
+- feat: Add the option for interactive input for the builder options [\#100](https://github.com/sci-oer/automated-builder/pull/100) ([MarshallAsch](https://github.com/MarshallAsch))
+- feat\(flag\): can now push to a docker registry without auth or with pre configured credentials [\#94](https://github.com/sci-oer/automated-builder/pull/94) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- ensure git is installed on system as installation dependancy [\#97](https://github.com/sci-oer/automated-builder/issues/97)
+- fix\(dep\): exit gracefully if git is not installed on the system [\#98](https://github.com/sci-oer/automated-builder/pull/98) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Security fixes:**
+
+- Update dependency urllib3 to v1.26.11 [\#80](https://github.com/sci-oer/automated-builder/pull/80) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency requests to v2.28.1 [\#79](https://github.com/sci-oer/automated-builder/pull/79) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency websocket-client to v1.3.3 [\#78](https://github.com/sci-oer/automated-builder/pull/78) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency charset-normalizer to v2.1.0 [\#77](https://github.com/sci-oer/automated-builder/pull/77) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency certifi to v2022.6.15 [\#76](https://github.com/sci-oer/automated-builder/pull/76) ([renovate[bot]](https://github.com/apps/renovate))
+- Update actions/setup-python action to v4 [\#75](https://github.com/sci-oer/automated-builder/pull/75) ([renovate[bot]](https://github.com/apps/renovate))
+
+**Merged pull requests:**
+
+- Update dependency flake8 to v5.0.1 [\#99](https://github.com/sci-oer/automated-builder/pull/99) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency flake8 to v5 [\#93](https://github.com/sci-oer/automated-builder/pull/93) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency pycodestyle to v2.9.0 [\#92](https://github.com/sci-oer/automated-builder/pull/92) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency pyflakes to v2.5.0 [\#91](https://github.com/sci-oer/automated-builder/pull/91) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency attrs to v22 [\#90](https://github.com/sci-oer/automated-builder/pull/90) ([renovate[bot]](https://github.com/apps/renovate))
+- Update pypa/gh-action-pypi-publish action to v1.5.1 [\#89](https://github.com/sci-oer/automated-builder/pull/89) ([renovate[bot]](https://github.com/apps/renovate))
+
+## [v0.2.1](https://github.com/sci-oer/automated-builder/releases/v0.2.1) (2022-07-31)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.2.0...v0.2.1)
+
 ## [v0.2.0](https://github.com/sci-oer/automated-builder/releases/v0.2.0) (2022-07-31)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.1.2...v0.2.0)
