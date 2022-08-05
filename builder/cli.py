@@ -798,6 +798,14 @@ def main():
         print(f"scioer-builder: {__version__}")
         sys.exit(0)
 
+    try:
+        docker.from_env()
+    except:
+        _LOGGER.error(
+            "failed to connect to docker, check that Docker is running on the host."
+        )
+        sys.exit("Docker is not running")
+
     opts = _make_opts(args)
     _LOGGER.info(opts)
 
