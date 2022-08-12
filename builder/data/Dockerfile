@@ -18,5 +18,10 @@ COPY practiceProblems /builtin/practiceProblems/
 ADD database.sqlite.tar /opt/wiki/
 #COPY motd.txt /scripts/motd.txt
 
+USER root
+RUN chown -R ${UID}:${UID} /opt/static/lectures /opt/wiki
+USER ${UNAME}
+
+
 ARG BUILD_DATE
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
