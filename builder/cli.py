@@ -610,7 +610,7 @@ def run(opts, **kwargs):
         )
         sys.exit("Incompatible arguments")
 
-    sshKeyFile = load_ssh_key(opts["key_file"])
+    sshKeyFile = load_ssh_key(os.path.expanduser(opts["key_file"]))
     if sshKeyFile != "":
         sshKeyFile = os.path.realpath(sshKeyFile)
 
