@@ -31,12 +31,9 @@ WikiJS options:
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. This should exclude the registry portion. [default: sci-oer/custom:latest]
   -b --base=<base>                  The base image to use [default: marshallasch/java-resource:latest]
-  --registry=<url>                  The url of a docker registry to push the image to
   --no-pull                         Don't pull the base image first
-  --no-push                         Don't push the image to a remote registry.
-  --save-tar=<file name>            The name of the tar archive to export the image as.
-                                    If running in docker it will get put in the `/output` directory,
-                                    if the builder is being run on the host then it will be palced in the `./output` directory.
+  --push                            Push the image to the DockerHub registry.
+  --multi-arch                      Build the docker image for amd64 and arm64. [default: False]
 
 Other interface options:
   -h --help                         Show this help message.
@@ -57,6 +54,7 @@ import platform
 import requests
 import json
 import copy
+import subprocess
 
 from docopt import docopt
 import colorlog
@@ -109,19 +107,9 @@ def ask_interactive(opts):
         default="no" if input["no_pull"] else "yes",
     )
 
-    input["no_push"] = not yesno(
-        "Do you want to push the generated image to a docker registry?",
-        default="no" if input["no_push"] else "yes",
-    )
-    if not input["no_push"]:
-        input["registry"] = prompt(
-            "Enter the registry that the generated should be pushed too (leave blank for dockerhub):",
-            default=input["registry"],
-        )
-
-    input["save_tar"] = prompt(
-        "Enter name of the tar file of the generated image to save (leave blank if you do not want to save it):",
-        default=input["save_tar"],
+    input["push"] = yesno(
+        "Do you want to push the generated image to dockerhub?",
+        default="yes" if input["push"] else "no",
     )
 
     print("")
@@ -294,7 +282,9 @@ def cleanup_build(dir):
     dir.cleanup()
 
 
-def build_image(client, dir, tag="sci-oer:custom", base=None, **kwargs):
+def build_multi_arch(
+    client, dir, tag="sci-oer:custom", base=None, push=False, **kwargs
+):
 
     args = {
         "BASE_IMAGE": base,
@@ -302,25 +292,39 @@ def build_image(client, dir, tag="sci-oer:custom", base=None, **kwargs):
     }
 
     _LOGGER.info(f"Building custom image with name `{tag}`...")
-    image, logs = client.images.build(path=dir, tag=tag, buildargs=args)
+
+    # platforms = 'linux/amd64,linux/arm64,linux/amd64/v2,linux/arm/v7,linux/arm/v6,linux/386'
+    platforms = "linux/amd64,linux/arm64"
+
+    buildArgs = ""
+    for k, v in args.items():
+        buildArgs = f"{buildArgs}--build-arg {k}={v} "
+
+    push = "" if not push else "--push"
+
+    cmd = f"docker buildx build --progress=plain --platform {platforms} --tag {tag} {push} {buildArgs} {dir}"
+    _LOGGER.debug(f"build command: `{cmd}`")
+    subprocess.run(cmd, shell=True, check=True)
+    # image, logs = client.images.build(path=dir, tag=tag, buildargs=args)
+    image = client.images.get(tag)
     _LOGGER.info("Done building custom image.")
 
     return image
 
 
-def save_image(image, fileName, directory, **kwargs):
+def build_single_arch(client, dir, tag="sci-oer:custom", base=None, **kwargs):
 
-    os.makedirs(directory, exist_ok=True)
+    args = {
+        "BASE_IMAGE": base,
+        "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
 
-    tarFile = os.path.join(directory, fileName)
+    _LOGGER.info(f"Building custom image with name `{tag}`...")
 
-    _LOGGER.info(f'Saving image to "{tarFile}"...')
-    f = open(tarFile, "wb")
-    for chunk in image.save():
-        f.write(chunk)
-    f.close()
+    image, logs = client.images.build(path=dir, tag=tag, buildargs=args)
+    _LOGGER.info("Done building custom image.")
 
-    _LOGGER.info("Done saving image to tar file.")
+    return image
 
 
 def extract_db(container, dir, **kwargs):
@@ -733,7 +737,15 @@ def run(opts, **kwargs):
     delete_container(container)
     delete_volume(volume)
 
-    image = build_image(client, dir.name, tag=opts["tag"], base=opts["base"])
+    if opts["multi_arch"]:
+        _LOGGER.info("Starting multi platform build")
+        image = build_multi_arch(
+            client, dir.name, tag=opts["tag"], base=opts["base"], push=opts["push"]
+        )
+    else:
+        _LOGGER.info("Starting single platform build")
+        build_single_arch(client, dir.name, tag=opts["tag"], base=opts["base"])
+
     cleanup_build(dir)
 
     if containerized:
@@ -741,12 +753,6 @@ def run(opts, **kwargs):
     network.remove()
 
     _LOGGER.info("Done.")
-
-    if opts["save_tar"] is not None:
-        save_image(image, opts["save_tar"], "/output" if containerized else "./output")
-
-    if not opts["no_push"]:
-        push_image(client, opts["registry"], image)
 
 
 def main():
