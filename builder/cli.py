@@ -212,6 +212,7 @@ def change_key_permissions(container, keyFile, **kwargs):
         "Copying the SSH key within the container to set the correct ownership"
     )
     container.exec_run(f'sudo cp "{keyFile}" "{keyFile}.CONTAINER"')
+    container.exec_run(f'sudo chown 1000:1000 "{keyFile}.CONTAINER"')
 
 
 def stop_container(container, **kwargs):
