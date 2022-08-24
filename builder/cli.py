@@ -207,6 +207,13 @@ def start_container(client, volume, image, keyFile, **kwargs):
     return container
 
 
+def change_key_permissions(container, keyFile, **kwargs):
+    _LOGGER.info(
+        "Copying the SSH key within the container to set the correct ownership"
+    )
+    container.exec_run(f'sudo cp "{keyFile}" "{keyFile}.CONTAINER"')
+
+
 def stop_container(container, **kwargs):
     _LOGGER.info("stopping docker container...")
     container.stop()
@@ -499,7 +506,7 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
                     },
                     {
                         "key": "sshPrivateKeyPath",
-                        "value": f'{{"v": "{repo.auth.ssh_file}"}}',
+                        "value": f'{{"v": "{repo.auth.ssh_file}.CONTAINER"}}',
                     },
                     {
                         "key": "sshPrivateKeyContent",
@@ -721,6 +728,8 @@ def run(opts, **kwargs):
         )
         wikiRepo.auth = gitAuthentication
 
+        if sshKeyFile:
+            change_key_permissions(container, sshKeyFile)
         set_wiki_contents(host, wikiRepo, port=port, keep_git=opts["keep_git"])
     else:
         _LOGGER.info("wiki content repository has not been set. skipping...")
