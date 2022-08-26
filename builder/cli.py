@@ -313,11 +313,7 @@ def build_multi_arch(
     cmd = f"docker buildx build --progress=plain --platform {platforms} --tag {tag} {push} {buildArgs} {dir}"
     _LOGGER.debug(f"build command: `{cmd}`")
     subprocess.run(cmd, shell=True, check=True)
-    # image, logs = client.images.build(path=dir, tag=tag, buildargs=args)
-    image = client.images.get(tag)
     _LOGGER.info("Done building custom image.")
-
-    return image
 
 
 def build_single_arch(client, dir, tag="sci-oer:custom", base=None, **kwargs):
@@ -749,7 +745,7 @@ def run(opts, **kwargs):
 
     if opts["multi_arch"]:
         _LOGGER.info("Starting multi platform build")
-        image = build_multi_arch(
+        build_multi_arch(
             client, dir.name, tag=opts["tag"], base=opts["base"], push=opts["push"]
         )
     else:
