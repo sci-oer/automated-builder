@@ -41,6 +41,7 @@ Other interface options:
   -v --verbose                      Show verbose log messages.
   -d --debug                        Show debug log messages.
   -i --interactive                  Interactivly prompt for all of the options.
+  -u --update                       Update and add content to an existing image.
 """  # noqa E501
 
 import docker
@@ -261,7 +262,7 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
     folder = os.path.join(dir, name)
 
     if repo.uri is None:
-        os.mkdir(folder)
+        # os.mkdir(folder)
         _LOGGER.info(f'no repository specified for "{name}", skipping...')
         return
     else:
@@ -277,7 +278,7 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
         shutil.rmtree(os.path.join(folder, ".git"))
 
 
-def setup_tmp_build(**kwargs):
+def setup_tmp_build(update=False, **kwargs):
     dir = tempfile.TemporaryDirectory()
 
     with pkg_resources.path("builder.data", "Dockerfile") as template:
@@ -290,9 +291,28 @@ def cleanup_build(dir):
     dir.cleanup()
 
 
+def line_to_remove(line, remove):
+    for r in remove:
+        if line.startswith(f'COPY --link --chown=${{UID}}:${{UID}} {r}'):
+            return True
+    return False
+
 def build_multi_arch(
-    client, dir, tag="sci-oer:custom", base=None, push=False, **kwargs
+    client, dir, tag="sci-oer:custom", base=None, push=False, update=False, **kwargs
 ):
+    if update:
+        toCopy = ['jupyter', 'lectures', 'practiceProblems', 'database.sqlite.tar']
+        files = os.listdir(dir)
+        toRemove = [f for f in toCopy if f not in files]
+
+        writeLines = []
+        with open(f'{dir}/Dockerfile', 'r') as f:
+            lines = f.readlines()
+            writeLines = [ l for l in lines if not line_to_remove(l, toRemove) ]
+
+        with open(f'{dir}/Dockerfile', 'w') as f:
+            for l in writeLines:
+                f.write(l)
 
     args = {
         "BASE_IMAGE": base,
@@ -316,7 +336,7 @@ def build_multi_arch(
     _LOGGER.info("Done building custom image.")
 
 
-def build_single_arch(client, dir, tag="sci-oer:custom", base=None, **kwargs):
+def build_single_arch(client, dir, tag="sci-oer:custom", base=None, update=False, **kwargs):
 
     args = {
         "BASE_IMAGE": base,
@@ -631,8 +651,9 @@ def run(opts, **kwargs):
         )
         sys.exit("Docker is not running")
 
+    baseName = opts['tag'] if opts['update'] else opts['base']
     if not opts["no_pull"]:
-        fetch_latest(client, opts["base"])
+        fetch_latest(client, baseName)
 
     network = create_network(client)
 
@@ -646,35 +667,6 @@ def run(opts, **kwargs):
         network.connect(this)
 
         realKey = get_real_key_path(this, opts["key_file"])
-
-    volume = create_volume(client, "course")
-    container = start_container(
-        client,
-        volume,
-        opts["base"],
-        [realKey, sshKeyFile],
-    )
-
-    if containerized:
-        network.connect(container)
-
-    container.reload()
-
-    port = get_wiki_port(containerized, container)
-    host = "127.0.0.1" if not containerized else container.name
-
-    try:
-        wait_for_wiki_to_be_ready(host, port)
-    except:
-        _LOGGER.error("Requests timed out, container failed to start.")
-
-        stop_container(container)
-        if containerized:
-            network.disconnect(container)
-
-        delete_container(container)
-        delete_volume(volume)
-        return
 
     dir = setup_tmp_build()
 
@@ -717,40 +709,70 @@ def run(opts, **kwargs):
     else:
         _LOGGER.info("no example repos were specified, skipping...")
 
-    if opts["wiki_git_repo"] is not None:
-        wikiRepo = Repository(
-            opts["wiki_git_repo"],
-            opts["wiki_git_branch"],
-            not opts["wiki_git_no_verify"],
+
+    if not opts["update"]:
+        volume = create_volume(client, "course")
+        container = start_container(
+            client,
+            volume,
+            opts["base"],
+            [realKey, sshKeyFile],
         )
-        wikiRepo.auth = gitAuthentication
 
-        if sshKeyFile:
-            change_key_permissions(container, sshKeyFile)
-        set_wiki_contents(host, wikiRepo, port=port, keep_git=opts["keep_git"])
-    else:
-        _LOGGER.info("wiki content repository has not been set. skipping...")
+        if containerized:
+            network.connect(container)
 
-    set_wiki_title(host, opts["wiki_title"], port=port)
-    dissable_api(host, port=port)
+        container.reload()
 
-    stop_container(container)
-    if containerized:
-        network.disconnect(container)
+        port = get_wiki_port(containerized, container)
+        host = "127.0.0.1" if not containerized else container.name
 
-    extract_db(container, dir.name)
+        try:
+            wait_for_wiki_to_be_ready(host, port)
+        except:
+            _LOGGER.error("Requests timed out, container failed to start.")
 
-    delete_container(container)
-    delete_volume(volume)
+            stop_container(container)
+            if containerized:
+                network.disconnect(container)
+
+            delete_container(container)
+            delete_volume(volume)
+            return
+        if opts["wiki_git_repo"] is not None:
+            wikiRepo = Repository(
+                opts["wiki_git_repo"],
+                opts["wiki_git_branch"],
+                not opts["wiki_git_no_verify"],
+            )
+            wikiRepo.auth = gitAuthentication
+
+            if sshKeyFile:
+                change_key_permissions(container, sshKeyFile)
+            set_wiki_contents(host, wikiRepo, port=port, keep_git=opts["keep_git"])
+        else:
+            _LOGGER.info("wiki content repository has not been set. skipping...")
+
+        set_wiki_title(host, opts["wiki_title"], port=port)
+        dissable_api(host, port=port)
+
+        stop_container(container)
+        if containerized:
+            network.disconnect(container)
+
+        extract_db(container, dir.name)
+
+        delete_container(container)
+        delete_volume(volume)
 
     if opts["multi_arch"]:
         _LOGGER.info("Starting multi platform build")
         build_multi_arch(
-            client, dir.name, tag=opts["tag"], base=opts["base"], push=opts["push"]
+            client, dir.name, tag=opts["tag"], base=baseName, push=opts["push"], update=opts['update']
         )
     else:
         _LOGGER.info("Starting single platform build")
-        build_single_arch(client, dir.name, tag=opts["tag"], base=opts["base"])
+        build_single_arch(client, dir.name, tag=opts["tag"], base=baseName, update=opts['update'])
 
     cleanup_build(dir)
 
