@@ -10,18 +10,12 @@ LABEL org.opencontainers.image.licenses="GPL-3.0-only"
 LABEL org.opencontainers.image.title="Offline Course Resouce for my example course"
 LABEL org.opencontainers.image.description="A custom built version of the oo-resource image."
 
+COPY --link --chown=${UID}:${UID} jupyter /builtin/jupyter/
+COPY --link --chown=${UID}:${UID} lectures /opt/static/lectures/
+COPY --link --chown=${UID}:${UID} practiceProblems /builtin/practiceProblems/
 
-COPY jupyter /builtin/jupyter/
-COPY lectures /opt/static/lectures/
-COPY practiceProblems /builtin/practiceProblems/
-
-ADD database.sqlite.tar /opt/wiki/
+ADD --link --chown=${UID}:${UID} database.sqlite.tar /opt/wiki/
 #COPY motd.txt /scripts/motd.txt
-
-USER root
-RUN chown -R ${UID}:${UID} /opt/static/lectures /opt/wiki
-USER ${UNAME}
-
 
 ARG BUILD_DATE
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
