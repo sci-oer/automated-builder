@@ -27,6 +27,7 @@ WikiJS options:
   --wiki-title=<title>              The title to use for the wiki website.
   --wiki-git-branch=<wiki_branch>   The name of the branch that the wiki content should be loaded from. [default: main]
   --wiki-git-no-verify              Do not verify the ssl certificate when cloning the wikijs wiki.
+  --wiki-navigation=<type>          The type of wiki navigation to confgigure, either 'TREE' or 'NONE'. [default: TREE]
 
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. This should exclude the registry portion. [default: sci-oer/custom:latest]
@@ -441,6 +442,23 @@ def set_wiki_title(host, title, **kwargs):
     api_call(host, query, variables={"title": title}, **kwargs)
 
 
+def set_wiki_navigation_mode(host, mode, **kwargs):
+
+    if mode not in ["NONE", "TREE"]:
+        _LOGGER.warning(f"Invalid navigation mode '{mode}'")
+        return
+
+    query = """mutation Navigation ($mode: NavigationMode!){
+        navigation {
+            updateConfig (mode: $mode ) {
+                responseResult { succeeded, errorCode, slug, message }
+            }
+        }
+    }"""
+
+    api_call(host, query, variables={"mode": mode}, **kwargs)
+
+
 def load_ssh_key(keyFile):
 
     env_key_file = os.getenv(SSH_KEY_FILE_ENV)
@@ -612,6 +630,13 @@ def run(opts, **kwargs):
 
     # Checking incompatible arguments
 
+    opts["wiki_navigation"] = opts["wiki_navigation"].strip().upper()
+    if opts["wiki_navigation"] not in ["TREE", "NONE"]:
+        _LOGGER.error(
+            f"'{opts['wiki_navigation']}' is not a valid navigation option must be one of ['TREE', 'NONE']."
+        )
+        sys.exit("Incompatible arguments")
+
     if opts["lectures_repo"] is not None and opts["lectures_directory"] is not None:
         _LOGGER.error(
             "Cannot specify both `--lectures-repo` and `--lectures-directory`, only one can be used at a time."
@@ -732,6 +757,7 @@ def run(opts, **kwargs):
         _LOGGER.info("wiki content repository has not been set. skipping...")
 
     set_wiki_title(host, opts["wiki_title"], port=port)
+    set_wiki_navigation_mode(host, opts["wiki_navigation"], port=port)
     dissable_api(host, port=port)
 
     stop_container(container)
