@@ -1,5 +1,37 @@
 # Changelog
 
+## [v0.4.0](https://github.com/sci-oer/automated-builder/releases/v0.4.0) (2022-09-01)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.3.1...v0.4.0)
+
+**Implemented enhancements:**
+
+- be able toi change to none or  or  [\#118](https://github.com/sci-oer/automated-builder/issues/118)
+- Move docker check before the interactive input [\#106](https://github.com/sci-oer/automated-builder/issues/106)
+- feat: add the ability to configure the wiki site navigation mode [\#131](https://github.com/sci-oer/automated-builder/pull/131) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- Lectures using -keepgit [\#110](https://github.com/sci-oer/automated-builder/issues/110)
+- Expand ssh key path before trying to use it [\#108](https://github.com/sci-oer/automated-builder/issues/108)
+- \[BUG\] Package is not correctly including the dockerfile [\#86](https://github.com/sci-oer/automated-builder/issues/86)
+- fix: expand ssh key path name before it is used [\#113](https://github.com/sci-oer/automated-builder/pull/113) ([MarshallAsch](https://github.com/MarshallAsch))
+- fix: change ownership of the letures directory to be owned by the student user [\#112](https://github.com/sci-oer/automated-builder/pull/112) ([MarshallAsch](https://github.com/MarshallAsch))
+- feat: move check for docker daemon beofre interactive input prompt [\#107](https://github.com/sci-oer/automated-builder/pull/107) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Merged pull requests:**
+
+- Multi arch [\#129](https://github.com/sci-oer/automated-builder/pull/129) ([MarshallAsch](https://github.com/MarshallAsch))
+- Update dependency colorlog to v6.7.0 [\#128](https://github.com/sci-oer/automated-builder/pull/128) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency websocket-client to v1.4.0 [\#126](https://github.com/sci-oer/automated-builder/pull/126) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency urllib3 to v1.26.12 [\#125](https://github.com/sci-oer/automated-builder/pull/125) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency charset-normalizer to v2.1.1 [\#124](https://github.com/sci-oer/automated-builder/pull/124) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency docker to v6 [\#119](https://github.com/sci-oer/automated-builder/pull/119) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency pycodestyle to v2.9.1 [\#105](https://github.com/sci-oer/automated-builder/pull/105) ([renovate[bot]](https://github.com/apps/renovate))
+- Update dependency flake8 to v5.0.4 [\#104](https://github.com/sci-oer/automated-builder/pull/104) ([renovate[bot]](https://github.com/apps/renovate))
+- fix: strip the .github folder out of the src dist [\#103](https://github.com/sci-oer/automated-builder/pull/103) ([MarshallAsch](https://github.com/MarshallAsch))
+- fix: pass the correct application version to docker build [\#102](https://github.com/sci-oer/automated-builder/pull/102) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.3.1](https://github.com/sci-oer/automated-builder/releases/v0.3.1) (2022-08-01)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.3.0...v0.3.1)
