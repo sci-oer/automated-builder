@@ -338,6 +338,20 @@ def build_multi_arch(
 
 def build_single_arch(client, dir, tag="sci-oer:custom", base=None, update=False, **kwargs):
 
+    if update:
+        toCopy = ['jupyter', 'lectures', 'practiceProblems', 'database.sqlite.tar']
+        files = os.listdir(dir)
+        toRemove = [f for f in toCopy if f not in files]
+
+        writeLines = []
+        with open(f'{dir}/Dockerfile', 'r') as f:
+            lines = f.readlines()
+            writeLines = [ l for l in lines if not line_to_remove(l, toRemove) ]
+
+        with open(f'{dir}/Dockerfile', 'w') as f:
+            for l in writeLines:
+                f.write(l)
+
     args = {
         "BASE_IMAGE": base,
         "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
