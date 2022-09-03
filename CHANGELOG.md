@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.5.0](https://github.com/sci-oer/automated-builder/releases/v0.5.0) (2022-09-03)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.4.0...v0.5.0)
+
+**Implemented enhancements:**
+
+- remove the lectures subdirectory [\#127](https://github.com/sci-oer/automated-builder/issues/127)
+- enable / dissable comments with a flag [\#117](https://github.com/sci-oer/automated-builder/issues/117)
+- feat: add flag to enable or dissable wiki comments [\#135](https://github.com/sci-oer/automated-builder/pull/135) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- crashes if no ssh key file is provided [\#121](https://github.com/sci-oer/automated-builder/issues/121)
+- Automated builder doesn't stop the docker container it runs [\#111](https://github.com/sci-oer/automated-builder/issues/111)
+- fix: gracefully recover if a git clone is unsuccessful [\#133](https://github.com/sci-oer/automated-builder/pull/133) ([MarshallAsch](https://github.com/MarshallAsch))
+- fix: no longer crashes if an ssh key file is not specified [\#132](https://github.com/sci-oer/automated-builder/pull/132) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Merged pull requests:**
+
+- feat: change ownership and copy files at the same time to reduce the number of image layers [\#136](https://github.com/sci-oer/automated-builder/pull/136) ([MarshallAsch](https://github.com/MarshallAsch))
+- feat: allow custom ssh options to be passed to the git clone command using the  envirionment variable [\#134](https://github.com/sci-oer/automated-builder/pull/134) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.4.0](https://github.com/sci-oer/automated-builder/releases/v0.4.0) (2022-09-01)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.3.1...v0.4.0)
