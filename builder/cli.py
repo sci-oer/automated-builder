@@ -74,6 +74,7 @@ from .__version__ import __version__  # noqa: I900
 from .prompt import prompt, yesno, prompt_list
 
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
+SSH_OPTIONS = "SSH_OPTIONS"
 
 # this is the api token that has been built into the base-resource container
 API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
@@ -270,8 +271,9 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
 
     git_ssh_cmd = ""
     if repo.isSSH():
+        sshOptions = os.environ.get(SSH_OPTIONS, "")
         keyFile = f"-i {repo.auth.ssh_file}" if repo.auth.ssh_file else ""
-        git_ssh_cmd = f'ssh {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}{keyFile}'
+        git_ssh_cmd = f'ssh {sshOptions} {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}{keyFile}'
 
     try:
         Repo.clone_from(repo.uri, folder, env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
