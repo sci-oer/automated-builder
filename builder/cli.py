@@ -273,7 +273,12 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
         keyFile = f"-i {repo.auth.ssh_file}" if repo.auth.ssh_file else ""
         git_ssh_cmd = f'ssh {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}{keyFile}'
 
-    Repo.clone_from(repo.uri, folder, env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
+    try:
+        Repo.clone_from(repo.uri, folder, env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
+    except GitCommandError as e:
+        _LOGGER.error("Failed to clone the git repository")
+        _LOGGER.error(e)
+        return
 
     if not keep_git:
         # make sure that the git directory is removed before it gets loaded into the image
