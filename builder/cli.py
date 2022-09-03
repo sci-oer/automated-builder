@@ -66,7 +66,7 @@ import datetime
 import importlib.resources as pkg_resources
 
 try:
-    from git import Repo  # noqa: I900
+    from git import Repo, GitCommandError  # noqa: I900
 except:
     sys.exit("Can not run, `git` must be installed on the system.")
 
@@ -272,8 +272,15 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
     git_ssh_cmd = ""
     if repo.isSSH():
         sshOptions = os.environ.get(SSH_OPTIONS, "")
-        git_ssh_cmd = f'ssh {sshOptions} {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}-i {repo.auth.ssh_file}'
-    Repo.clone_from(repo.uri, folder, env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
+        keyFile = f"-i {repo.auth.ssh_file}" if repo.auth.ssh_file else ""
+        git_ssh_cmd = f'ssh {sshOptions} {"-o StrictHostKeyChecking=no " if not repo.verify_host else " "}{keyFile}'
+
+    try:
+        Repo.clone_from(repo.uri, folder, env=dict(GIT_SSH_COMMAND=git_ssh_cmd))
+    except GitCommandError as e:
+        _LOGGER.error("Failed to clone the git repository")
+        _LOGGER.error(e)
+        return
 
     if not keep_git:
         # make sure that the git directory is removed before it gets loaded into the image
@@ -645,7 +652,7 @@ def run(opts, **kwargs):
         )
         sys.exit("Incompatible arguments")
 
-    sshKeyFile = load_ssh_key(os.path.expanduser(opts["key_file"]))
+    sshKeyFile = load_ssh_key(os.path.expanduser(opts["key_file"] or ""))
     if sshKeyFile != "":
         sshKeyFile = os.path.realpath(sshKeyFile)
 
