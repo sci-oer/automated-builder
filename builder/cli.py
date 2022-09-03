@@ -28,6 +28,7 @@ WikiJS options:
   --wiki-git-branch=<wiki_branch>   The name of the branch that the wiki content should be loaded from. [default: main]
   --wiki-git-no-verify              Do not verify the ssl certificate when cloning the wikijs wiki.
   --wiki-navigation=<type>          The type of wiki navigation to confgigure, either 'TREE' or 'NONE'. [default: TREE]
+  --wiki-comments                   If commenting should be enabled in the wiki. [default: False]
 
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. This should exclude the registry portion. [default: sci-oer/custom:latest]
@@ -425,6 +426,19 @@ def import_wiki_repo(host, **kwargs):
     _LOGGER.warning("Done importing wiki content")
 
 
+def set_wiki_comments(host, enabled, **kwargs):
+
+    query = """mutation Site ($comments: Boolean!){
+        site {
+            updateConfig (featurePageComments: $comments ) {
+                responseResult { succeeded, errorCode, slug, message }
+            }
+        }
+    }"""
+
+    api_call(host, query, variables={"comments": enabled}, **kwargs)
+
+
 def set_wiki_title(host, title, **kwargs):
 
     if title is None:
@@ -758,6 +772,7 @@ def run(opts, **kwargs):
 
     set_wiki_title(host, opts["wiki_title"], port=port)
     set_wiki_navigation_mode(host, opts["wiki_navigation"], port=port)
+    set_wiki_comments(host, opts["wiki_comments"], port=port)
     dissable_api(host, port=port)
 
     stop_container(container)
