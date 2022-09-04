@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.5.1](https://github.com/sci-oer/automated-builder/releases/v0.5.1) (2022-09-04)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.5.0...v0.5.1)
+
+**Implemented enhancements:**
+
+- chore: copy the lecture content last for ease of future compatibility with full/lite images [\#140](https://github.com/sci-oer/automated-builder/pull/140) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- fix: removed trailing .CONTAINER that got left behind in the ssh key file path when cleaning up the wiki [\#139](https://github.com/sci-oer/automated-builder/pull/139) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.5.0](https://github.com/sci-oer/automated-builder/releases/v0.5.0) (2022-09-03)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.4.0...v0.5.0)
