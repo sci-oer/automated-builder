@@ -12,10 +12,10 @@ LABEL org.opencontainers.image.title="Offline Course Resouce for my example cour
 LABEL org.opencontainers.image.description="A custom built version of the oo-resource image."
 
 COPY --chown=${UID}:${UID} jupyter /builtin/jupyter/
-COPY --chown=${UID}:${UID} lectures /opt/static/lectures/
 COPY --chown=${UID}:${UID} practiceProblems /builtin/practiceProblems/
-
 ADD --chown=${UID}:${UID} database.sqlite.tar /opt/wiki/
+COPY --chown=${UID}:${UID} lectures /opt/static/lectures/
+
 #COPY motd.txt /scripts/motd.txt
 
 ARG BUILD_DATE
