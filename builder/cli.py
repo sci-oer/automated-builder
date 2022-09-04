@@ -524,6 +524,7 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
         }
     }"""
 
+    keyFile = f"{repo.auth.ssh_file}.CONTAINER" if repo.auth.ssh_file else ""
     variables = {
         "targets": [
             {
@@ -544,7 +545,7 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
                     },
                     {
                         "key": "sshPrivateKeyPath",
-                        "value": f'{{"v": "{repo.auth.ssh_file}.CONTAINER"}}',
+                        "value": f'{{"v": "{keyFile}"}}',
                     },
                     {
                         "key": "sshPrivateKeyContent",
