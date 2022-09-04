@@ -14,6 +14,7 @@ Options:
  -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content. The default branch will be used.
  --lectures-directory=<lecture>     A path to the directory containing the builtin lessons content. Cannot be used with `--lectures-repo`.
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
+ --static-url=<url>                 A url to a public server that holds the static lectures content, so it does not need to be included to reduce the image size.
 
 General git options:
   --key-file=<key_file>             The path to the ssh private key that should be used.
@@ -302,12 +303,13 @@ def cleanup_build(dir):
 
 
 def build_multi_arch(
-    client, dir, tag="sci-oer:custom", base=None, push=False, **kwargs
+    client, dir, tag="sci-oer:custom", base=None, push=False, static_url=None, **kwargs
 ):
 
     args = {
         "BASE_IMAGE": base,
         "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "REMOTE_STATIC_SERVER_URL": static_url or "",
     }
 
     _LOGGER.info(f"Building custom image with name `{tag}`...")
@@ -327,11 +329,14 @@ def build_multi_arch(
     _LOGGER.info("Done building custom image.")
 
 
-def build_single_arch(client, dir, tag="sci-oer:custom", base=None, **kwargs):
+def build_single_arch(
+    client, dir, tag="sci-oer:custom", base=None, static_url=None, **kwargs
+):
 
     args = {
         "BASE_IMAGE": base,
         "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "REMOTE_STATIC_SERVER_URL": static_url or "",
     }
 
     _LOGGER.info(f"Building custom image with name `{tag}`...")
@@ -797,11 +802,22 @@ def run(opts, **kwargs):
     if opts["multi_arch"]:
         _LOGGER.info("Starting multi platform build")
         build_multi_arch(
-            client, dir.name, tag=opts["tag"], base=opts["base"], push=opts["push"]
+            client,
+            dir.name,
+            tag=opts["tag"],
+            base=opts["base"],
+            push=opts["push"],
+            static_url=opts["static_url"],
         )
     else:
         _LOGGER.info("Starting single platform build")
-        build_single_arch(client, dir.name, tag=opts["tag"], base=opts["base"])
+        build_single_arch(
+            client,
+            dir.name,
+            tag=opts["tag"],
+            base=opts["base"],
+            static_url=opts["static_url"],
+        )
 
     cleanup_build(dir)
 

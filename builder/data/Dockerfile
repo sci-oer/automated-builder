@@ -18,5 +18,8 @@ COPY --chown=${UID}:${UID} lectures /opt/static/lectures/
 
 #COPY motd.txt /scripts/motd.txt
 
+ARG REMOTE_STATIC_SERVER_URL=""
+ENV REMOTE_STATIC_SERVER_URL=$REMOTE_STATIC_SERVER_URL
+
 ARG BUILD_DATE
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
