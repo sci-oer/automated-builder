@@ -15,8 +15,7 @@ COPY --chown=${UID}:${UID} jupyter /builtin/jupyter/
 COPY --chown=${UID}:${UID} practiceProblems /builtin/practiceProblems/
 ADD --chown=${UID}:${UID} database.sqlite.tar /opt/wiki/
 COPY --chown=${UID}:${UID} lectures /opt/static/lectures/
-
-#COPY motd.txt /scripts/motd.txt
+COPY --chown=${UID}:${UID} motd.txt /scripts/motd.txt
 
 ARG REMOTE_STATIC_SERVER_URL=""
 ENV REMOTE_STATIC_SERVER_URL=$REMOTE_STATIC_SERVER_URL
