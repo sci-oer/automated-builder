@@ -15,6 +15,7 @@ Options:
  --lectures-directory=<lecture>     A path to the directory containing the builtin lessons content. Cannot be used with `--lectures-repo`.
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
  --static-url=<url>                 A url to a public server that holds the static lectures content, so it does not need to be included to reduce the image size.
+ --motd-file=<file>                 A file that contains the content of the Message Of The Day, to be printed when the container starts and when a user gets a shell in the container.
 
 General git options:
   --key-file=<key_file>             The path to the ssh private key that should be used.
@@ -646,9 +647,9 @@ def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
         _LOGGER.info("wiki is ready")
 
 
-def get_real_key_path(container, keyName):
+def get_real_file_path(container, fileName):
 
-    mounts = [m for m in container.attrs["Mounts"] if m["Destination"] == keyName]
+    mounts = [m for m in container.attrs["Mounts"] if m["Destination"] == fileName]
 
     if len(mounts) != 0:
         return mounts[0]["Source"]
@@ -671,6 +672,10 @@ def run(opts, **kwargs):
             "Cannot specify both `--lectures-repo` and `--lectures-directory`, only one can be used at a time."
         )
         sys.exit("Incompatible arguments")
+
+    motdFile = None
+    if opts["motd_file"]:
+        motdFile = os.path.realpath(os.path.expanduser(opts["motd_file"]))
 
     sshKeyFile = load_ssh_key(os.path.expanduser(opts["key_file"] or ""))
     if sshKeyFile != "":
@@ -699,7 +704,7 @@ def run(opts, **kwargs):
         this = get_current_container(client)
         network.connect(this)
 
-        realKey = get_real_key_path(this, opts["key_file"])
+        realKey = get_real_file_path(this, opts["key_file"])
 
     volume = create_volume(client, "course")
     container = start_container(
@@ -770,6 +775,14 @@ def run(opts, **kwargs):
         break
     else:
         _LOGGER.info("no example repos were specified, skipping...")
+
+    if motdFile:
+        _LOGGER.info("Copying custom motd.txt file...")
+        shutil.copy2(motdFile, os.path.join(dir.name, "motd.txt"))
+    else:
+        _LOGGER.info("Copying default motd.txt file...")
+        with pkg_resources.path("builder.data", "motd.txt") as template:
+            shutil.copy2(template, os.path.join(dir.name, "motd.txt"))
 
     if opts["wiki_git_repo"] is not None:
         wikiRepo = Repository(

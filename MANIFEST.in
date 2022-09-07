@@ -1,2 +1,3 @@
 prune .github
 include builder/data/Dockerfile
+include builder/data/motd.txt
