@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.7.0](https://github.com/sci-oer/automated-builder/releases/v0.7.0) (2022-09-07)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.6.0...v0.7.0)
+
+**Merged pull requests:**
+
+- feat: allow custom message of the day file to be specified [\#143](https://github.com/sci-oer/automated-builder/pull/143) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.6.0](https://github.com/sci-oer/automated-builder/releases/v0.6.0) (2022-09-04)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.5.1...v0.6.0)
