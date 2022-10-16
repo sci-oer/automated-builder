@@ -1,8 +1,61 @@
 [build-system]
+# These are the assumed default build requirements from pip:
+# https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
 requires = [
-  "setuptools >= 45",
-  "setuptools_scm[toml] >= 6.2",
-  "wheel",
+  "setuptools>=61.0.0",
+  "setuptools_scm >= 6.2",
+  "wheel"
 ]
 build-backend = "setuptools.build_meta"
 
+
+[tool.setuptools_scm]
+write_to = "builder/__version__.py"
+
+
+[tool.pytest.ini_options]
+pythonpath = '.'
+
+[project]
+name = "scioer-builder"
+description = "A cli application to help build custom versions of the sci-oer course container"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Education",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Operating System :: OS Independent",
+  "Topic :: Education",
+  "Topic :: Education :: Computer Aided Instruction (CAI)",
+  "Topic :: Software Development",
+  "Topic :: Utilities"
+]
+
+dynamic = ["version", "dependencies"]
+
+
+[project.urls]
+"Homepage" = "https://github.com/sci-oer/automated-builder"
+"Bug Reports" = "https://github.com/sci-oer/automated-builder/issues"
+"Funding" = "https://github.com/sci-oer/automated-builder/blob/main/.github/FUNDING.md"
+"Documentation" = "https://github.com/sci-oer/automated-builder/blob/main/README.md"
+"Source" = "https://github.com/sci-oer/automated-builder"
+
+[project.scripts]
+scioer-builder = "builder.cli:main"
+
+[[project.authors]]
+name = "Marshall Asch"
+email = "masch@uoguelph.ca"
+
+[tool.setuptools.packages.find]
+
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
