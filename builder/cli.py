@@ -73,7 +73,10 @@ try:
 except:
     sys.exit("Can not run, `git` must be installed on the system.")
 
-from .__version__ import __version__  # noqa: I900
+try:
+    from .__version__ import __version__  # noqa: I900
+except:
+    __version__ = 'LOCAL DEV'
 from .prompt import prompt, yesno, prompt_list
 
 SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
