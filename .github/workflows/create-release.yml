@@ -59,12 +59,6 @@ jobs:
         echo "::set-output name=last::${current_ver}"
         echo "::set-output name=new::${new_ver}"
 
-    - name: Update release
-      id: bump_version
-      shell: bash
-      run: |
-          sed -i "s/${{ steps.get_version.outputs.last }}/${{ steps.get_version.outputs.new }}/g" "builder/__version__.py"
-
     - name: "Generate release changelog"
       id: generate-changelog
       uses: heinrichreimer/github-changelog-generator-action@v2.3
