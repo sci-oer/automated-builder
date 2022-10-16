@@ -59,6 +59,7 @@ import requests
 import json
 import copy
 import subprocess
+import signal
 
 from docopt import docopt
 import colorlog
@@ -74,7 +75,7 @@ except:
     sys.exit("Can not run, `git` must be installed on the system.")
 
 try:
-    from .__version__ import __version__  # noqa: I900
+    from builder.__version__ import __version__  # noqa: I900
 except:
     __version__ = "LOCAL DEV"
 from .prompt import prompt, yesno, prompt_list
@@ -86,6 +87,14 @@ SSH_OPTIONS = "SSH_OPTIONS"
 API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
 
 _LOGGER = logging.getLogger(__name__)
+
+
+cleanup_resources = {
+    "container": None,
+    "volume": None,
+    "network": None,
+    "build_dir": None,
+}
 
 
 def _make_opts(args):
@@ -228,9 +237,12 @@ def stop_container(container, **kwargs):
     container.stop()
 
 
-def delete_container(container, **kwargs):
+def delete_container(container, force=False, **kwargs):
+    if not container:
+        return
+
     _LOGGER.info("Deleteing setup container...")
-    container.remove()
+    container.remove(force=force)
 
 
 def generate_random_string(length=10):
@@ -261,6 +273,9 @@ def push_image(
 
 
 def delete_volume(volume, **kwargs):
+    if not volume:
+        return
+
     _LOGGER.info("Deleteing setup volume...")
     volume.remove()
 
@@ -302,6 +317,9 @@ def setup_tmp_build(**kwargs):
 
 
 def cleanup_build(dir):
+    if not dir:
+        return
+
     _LOGGER.info("removing temporary setup folder...")
     dir.cleanup()
 
@@ -696,14 +714,17 @@ def run(opts, **kwargs):
     if not opts["no_pull"]:
         fetch_latest(client, opts["base"])
 
-    network = create_network(client)
-
     this = None
     containerized = check_if_container(client)
 
     realKey = sshKeyFile
+    network = None
     if containerized:
         _LOGGER.debug("Currently running in a docker container")
+        network = create_network(client)
+        network.connect(container)
+        cleanup_resources["network"] = network
+
         this = get_current_container(client)
         network.connect(this)
 
@@ -717,8 +738,8 @@ def run(opts, **kwargs):
         [realKey, sshKeyFile],
     )
 
-    if containerized:
-        network.connect(container)
+    cleanup_resources["volume"] = volume
+    cleanup_resources["container"] = container
 
     container.reload()
 
@@ -739,6 +760,7 @@ def run(opts, **kwargs):
         return
 
     dir = setup_tmp_build()
+    cleanup_resources["build_dir"] = dir
 
     gitAuthentication = Authentication(
         opts["wiki_git_user"],
@@ -839,12 +861,26 @@ def run(opts, **kwargs):
 
     if containerized:
         network.disconnect(this)
-    network.remove()
+        network.remove()
 
     _LOGGER.info("Done.")
 
 
+def signal_handler(sig, frame):
+    print("Gracefully cleaning up all resources shutdown....")
+
+    delete_container(cleanup_resources["container"], force=True)
+    delete_volume(cleanup_resources["volume"])
+    if cleanup_resources["network"]:
+        cleanup_resources["network"].remove()
+
+    cleanup_build(cleanup_resources["build_dir"])
+
+    sys.exit(1)
+
+
 def main():
+    signal.signal(signal.SIGINT, signal_handler)
     args = docopt(__doc__)
 
     if args["--debug"]:
