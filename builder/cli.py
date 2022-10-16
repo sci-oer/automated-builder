@@ -722,7 +722,6 @@ def run(opts, **kwargs):
     if containerized:
         _LOGGER.debug("Currently running in a docker container")
         network = create_network(client)
-        network.connect(container)
         cleanup_resources["network"] = network
 
         this = get_current_container(client)
@@ -740,6 +739,9 @@ def run(opts, **kwargs):
 
     cleanup_resources["volume"] = volume
     cleanup_resources["container"] = container
+
+    if containerized:
+        network.connect(container)
 
     container.reload()
 
