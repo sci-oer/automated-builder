@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.8.0](https://github.com/sci-oer/automated-builder/releases/v0.8.0) (2022-10-19)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.7.0...v0.8.0)
+
+**Implemented enhancements:**
+
+- Add interupt handler to gracefully handle ctrl-c [\#137](https://github.com/sci-oer/automated-builder/issues/137)
+- feat: gracefully handle shutdown on sigint [\#151](https://github.com/sci-oer/automated-builder/pull/151) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Closed issues:**
+
+- student proof install/running [\#37](https://github.com/sci-oer/automated-builder/issues/37)
+
+**Merged pull requests:**
+
+- fix: used the container before it was created [\#152](https://github.com/sci-oer/automated-builder/pull/152) ([MarshallAsch](https://github.com/MarshallAsch))
+- Package new [\#149](https://github.com/sci-oer/automated-builder/pull/149) ([MarshallAsch](https://github.com/MarshallAsch))
+- chore: remove unneeded packages from requirements.txt [\#148](https://github.com/sci-oer/automated-builder/pull/148) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.7.0](https://github.com/sci-oer/automated-builder/releases/v0.7.0) (2022-09-07)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.6.0...v0.7.0)
