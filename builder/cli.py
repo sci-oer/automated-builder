@@ -62,6 +62,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from time import sleep
 from typing import List, Optional
 
 import colorlog
@@ -702,15 +703,50 @@ def get_wiki_port(isContainer: bool, container: Container) -> int:
     return wikiPort
 
 
-def wait_for_wiki_to_be_ready(host: str, port: int = 3000, **kwargs):
-    http = requests.Session()
-    retry_strategy = Retry(total=5, backoff_factor=1)
-    adapter = HTTPAdapter(max_retries=retry_strategy)
-    http.mount("http://", adapter)
-    r = http.get(f"http://{host}:{port}")
+def wait_for_wiki_to_be_ready_no_healthcheck(
+    host: str, port: int = 3000, **kwargs
+) -> bool:
+    try:
+        http = requests.Session()
+        retry_strategy = Retry(total=5, backoff_factor=1)
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        http.mount("http://", adapter)
+        r = http.get(f"http://{host}:{port}")
 
-    if r.status_code == 200:
-        _LOGGER.info("wiki is ready")
+        if r.status_code == 200:
+            _LOGGER.info("wiki is ready")
+            return True
+    except:
+        _LOGGER.error("Requests timed out, container failed to start.")
+    return False
+
+
+def wait_for_wiki_to_be_ready_healthcheck(container: Container, **kwargs) -> bool:
+
+    status: str = ""
+    while True:
+        container.reload()
+        status = container.attrs["State"]["Health"]["Status"]
+
+        if status != "starting":
+            _LOGGER.info("Container has started")
+            break
+        sleep(5)
+        _LOGGER.info("Container is not yet ready, sleeping for 5s...")
+
+    return status == "healthy"
+
+
+def wait_for_wiki_to_be_ready(
+    container: Container, host: str, port: int = 3000, **kwargs
+) -> bool:
+    """If the container has a healthcheck then it will block until it has settled on healthy or unhealthy
+    otherwise this will wait until the wiki returns a 200 status code or hits the retry limit."""
+
+    if "Health" in container.attrs["State"]:
+        return wait_for_wiki_to_be_ready_healthcheck(container)
+    else:
+        return wait_for_wiki_to_be_ready_no_healthcheck(host, port=port, **kwargs)
 
 
 def get_real_file_path(container: Container, fileName: str) -> str:
@@ -793,10 +829,10 @@ def run(opts: dict, **kwargs):
     port = get_wiki_port(containerized, container)
     host = "127.0.0.1" if not containerized else container.name
 
-    try:
-        wait_for_wiki_to_be_ready(host, port)
-    except:
-        _LOGGER.error("Requests timed out, container failed to start.")
+    started = wait_for_wiki_to_be_ready(container, host, port)
+
+    if not started:
+        _LOGGER.error("Container failed to start.")
 
         stop_container(container)
         if network:
