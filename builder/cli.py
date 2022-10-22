@@ -63,7 +63,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from time import sleep
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import colorlog
 import docker
@@ -428,7 +428,7 @@ def build_multi_arch(
     cleanup_buildx(old_builder, builder_name)
 
 
-def setup_buildx() -> tuple:
+def setup_buildx() -> Tuple[str, str]:
     res = subprocess.run(
         "docker buildx inspect", shell=True, check=True, capture_output=True
     )
