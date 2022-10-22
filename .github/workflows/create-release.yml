@@ -56,8 +56,8 @@ jobs:
       run: |
         current_ver="$(git describe --abbrev=0 --tags | sed 's/v//')"
         new_ver=$(semver bump "${{ github.event.inputs.version }}" "$current_ver")
-        echo "::set-output name=last::${current_ver}"
-        echo "::set-output name=new::${new_ver}"
+        echo "last=${current_ver}" >> $GITHUB_OUTPUT
+        echo "new=${new_ver}" >> $GITHUB_OUTPUT
 
     - name: "Generate release changelog"
       id: generate-changelog
