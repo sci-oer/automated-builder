@@ -37,7 +37,7 @@ jobs:
       - name: Setup the current date
         id: prep
         run: |
-          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"" >> $GITHUB_OUTPUT
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
