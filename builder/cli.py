@@ -47,30 +47,38 @@ Other interface options:
   -i --interactive                  Interactivly prompt for all of the options.
 """  # noqa E501
 
-import docker
-import random
-import string
-import tempfile
-import os
-import sys
-import shutil
-import platform
-import requests
-import json
 import copy
-import subprocess
-import signal
-
-from docopt import docopt
-import colorlog
-import logging
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 import datetime
 import importlib.resources as pkg_resources
+import json
+import logging
+import os
+import platform
+import random
+import shutil
+import signal
+import string
+import subprocess
+import sys
+import tempfile
+from dataclasses import dataclass
+from typing import List, Optional
+
+import colorlog
+import docker
+import requests
+from docker.models.containers import Container
+from docker.models.images import Image
+from docker.models.networks import Network
+from docker.models.volumes import Volume
+from docopt import docopt
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+
+from builder.prompt import prompt, prompt_list, yesno
 
 try:
-    from git import Repo, GitCommandError  # noqa: I900
+    from git import GitCommandError, Repo  # noqa: I900
 except:
     sys.exit("Can not run, `git` must be installed on the system.")
 
@@ -78,124 +86,173 @@ try:
     from builder.__version__ import __version__  # noqa: I900
 except:
     __version__ = "LOCAL DEV"
-from .prompt import prompt, yesno, prompt_list
 
-SSH_KEY_FILE_ENV = "SSH_KEY_FILE"
-SSH_OPTIONS = "SSH_OPTIONS"
+SSH_KEY_FILE_ENV: str = "SSH_KEY_FILE"
+SSH_OPTIONS: str = "SSH_OPTIONS"
 
 # this is the api token that has been built into the base-resource container
-API_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
+API_TOKEN: str = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
 
 _LOGGER = logging.getLogger(__name__)
 
 
-cleanup_resources = {
-    "container": None,
-    "volume": None,
-    "network": None,
-    "build_dir": None,
-}
+class Authentication:
+    username: str = ""
+    password: str = ""
+    ssh_file: str = ""
+
+    def __init__(
+        self, username: Optional[str], password: Optional[str], ssh_file: str = ""
+    ):
+        self.username = username or ""
+        self.password = password or ""
+        self.ssh_file = ssh_file
 
 
-def _make_opts(args):
+class Repository:
+    uri: str = ""
+    branch: Optional[str]
+    verify_ssl: bool = True
+    verify_host: bool = True
 
-    opts = {}
+    auth = Authentication("", "")
+
+    def __init__(
+        self,
+        uri: str,
+        branch: Optional[str],
+        verify_ssl: bool,
+        verify_host: bool = True,
+    ):
+        self.uri = uri
+        self.branch = branch
+        self.verify_ssl = verify_ssl
+        self.verify_host = verify_host
+
+    def isSSH(self) -> bool:
+        return not self.uri.startswith("https")
+
+
+@dataclass
+class CleanupWraper:
+    container: Optional[Container]
+    volume: Optional[Volume]
+    network: Optional[Network]
+    build_dir: Optional[tempfile.TemporaryDirectory]
+
+
+cleanup_resources = CleanupWraper(None, None, None, None)
+
+
+def _make_opts(args: dict) -> dict:
+    """Convert all the cli options from flag form to underscore form.
+
+    converts `--my-arg` to `my_arg`
+
+    Args:
+        args (dict): the raw dictionary from argparse
+
+    Returns:
+        dict: a cleaned set of the arguments
+    """
+
+    opts: dict = {}
     for arg, val in args.items():
-        opt = arg.replace("--", "").replace("-", "_")
+        opt: str = arg.replace("--", "").replace("-", "_")
         opts[opt] = val
     return opts
 
 
-def ask_interactive(opts):
+def ask_interactive(opts: dict) -> dict:
     input = copy.deepcopy(opts)
 
     # general image setup  information
     print("## Information about the container to be built.")
-    input["tag"] = prompt(
+    input["tag"]: str = prompt(
         "Enter the name of the image to be built, including the tag: ",
         default=input["tag"],
     )
-    input["base"] = prompt(
+    input["base"]: str = prompt(
         "Enter the base image that should be used for this course:",
         default=input["base"],
     )
-    input["no_pull"] = not yesno(
+    input["no_pull"]: bool = not yesno(
         "Should a the latest base image be fetched?",
         default="no" if input["no_pull"] else "yes",
     )
 
-    input["push"] = yesno(
+    input["push"]: bool = yesno(
         "Do you want to push the generated image to dockerhub?",
         default="yes" if input["push"] else "no",
     )
 
     print("")
     print("## General options for cloning git repositories.")
-    input["no_verify_host"] = yesno(
+    input["no_verify_host"]: bool = yesno(
         "Should the SSH host keys be verified?",
         default="no" if input["no_verify_host"] else "yes",
     )
-    input["keep_git"] = yesno(
+    input["keep_git"]: bool = yesno(
         "Should the git histories be kept after they are cloned?",
         default="yes" if input["keep_git"] else "no",
     )
-    input["key_file"] = prompt(
+    input["key_file"]: str = prompt(
         "Enter the path to the SSH private key used to clone the git repos if one is being used:",
         default=input["key_file"],
     )
 
     print("")
     print("## Information about the wiki to be created.")
-    input["wiki_title"] = prompt(
+    input["wiki_title"]: str = prompt(
         "Enter the title for the Wiki:", default=input["wiki_title"]
     )
-    input["wiki_git_repo"] = prompt(
+    input["wiki_git_repo"]: str = prompt(
         "Enter the git repository URL for the wiki:", default=input["wiki_git_repo"]
     )
-    input["wiki_git_branch"] = prompt(
+    input["wiki_git_branch"]: str = prompt(
         "Enter the branch name for the wiki repository:",
         default=input["wiki_git_branch"],
     )
 
     isSSH = yesno("Do you want to clone the wiki repository using ssh?", default="yes")
     if not isSSH:
-        input["wiki_git_user"] = prompt(
+        input["wiki_git_user"]: str = prompt(
             "Enter the git username for cloning the wiki contents:",
             default=input["wiki_git_user"],
         )
-        input["wiki_git_password"] = prompt(
+        input["wiki_git_password"]: str = prompt(
             "Enter the git password for cloning the wiki contents",
             default=input["wiki_git_password"],
         )
 
-    input["wiki_git_no_verify"] = yesno(
+    input["wiki_git_no_verify"]: str = yesno(
         "Should the SSL certificates be verified when cloning the wiki?",
         default="no" if input["wiki_git_no_verify"] else "yes",
     )
 
     print("")
     print("## Where the rest of the content is being loaded from.")
-    input["jupyter_repo"] = prompt(
+    input["jupyter_repo"]: str = prompt(
         "Enter the git repository that holds the Jupyter Notebook files (leave blank if not being used)",
         default=input["jupyter_repo"],
     )
-    input["lectures_repo"] = prompt(
+    input["lectures_repo"]: str = prompt(
         "Enter the git repository that holds the Jupyter Lecture video files (leave blank if not being used)",
         default=input["lectures_repo"],
     )
-    input["lectures_directory"] = prompt(
+    input["lectures_directory"]: str = prompt(
         "Enter the directory that contains the Jupyter Lecture video files (leave blank if not being used)",
         default=input["lectures_directory"],
     )
 
-    input["example"] = prompt_list(
+    input["example"]: List[str] = prompt_list(
         "Enter a git repository that contains an example project"
     )
 
     return input
 
 
-def fetch_latest(client, repository, **kwargs):
+def fetch_latest(client: docker.client.APIClient, repository: str, **kwargs) -> None:
     _LOGGER.info(
         f'pulling latest version of the "{repository}" docker image, this may take a while...'
     )
@@ -203,7 +260,13 @@ def fetch_latest(client, repository, **kwargs):
     _LOGGER.info("Done pulling the latest docker image")
 
 
-def start_container(client, volume, image, keyFile, **kwargs):
+def start_container(
+    client: docker.client.APIClient,
+    volume: Volume,
+    image: str,
+    keyFile: list[str],
+    **kwargs,
+) -> Container:
     name = f"auto-build-tmp-{generate_random_string()}"
 
     volumes = [f"{volume.name}:/course"]
@@ -224,7 +287,7 @@ def start_container(client, volume, image, keyFile, **kwargs):
     return container
 
 
-def change_key_permissions(container, keyFile, **kwargs):
+def change_key_permissions(container: Container, keyFile: str, **kwargs):
     _LOGGER.info(
         "Copying the SSH key within the container to set the correct ownership"
     )
@@ -237,7 +300,7 @@ def stop_container(container, **kwargs):
     container.stop()
 
 
-def delete_container(container, force=False, **kwargs):
+def delete_container(container: Optional[Container], force: bool = False, **kwargs):
     if not container:
         return
 
@@ -245,18 +308,16 @@ def delete_container(container, force=False, **kwargs):
     container.remove(force=force)
 
 
-def generate_random_string(length=10):
+def generate_random_string(length: int = 10) -> str:
     letters = string.ascii_letters
     return "".join(random.choice(letters) for i in range(length))
 
 
-def create_volume(client, name):
+def create_volume(client: docker.client.APIClient, name: str) -> Volume:
     return client.volumes.create(f"{name}-{generate_random_string()}")
 
 
-def push_image(
-    client: docker.client, registry: string, image: docker.models.images.Image
-):
+def push_image(client: docker.client.APIClient, registry: str, image: Image) -> None:
 
     toPush = image.tags[0]
     if registry is not None:
@@ -272,7 +333,7 @@ def push_image(
         )
 
 
-def delete_volume(volume, **kwargs):
+def delete_volume(volume: Optional[Volume], **kwargs) -> None:
     if not volume:
         return
 
@@ -280,7 +341,7 @@ def delete_volume(volume, **kwargs):
     volume.remove()
 
 
-def clone_repo(repo, name, dir, keep_git=False, **kwargs):
+def clone_repo(repo: Repository, name: str, dir: str, keep_git: bool = False, **kwargs):
     folder = os.path.join(dir, name)
 
     if repo.uri is None:
@@ -308,7 +369,7 @@ def clone_repo(repo, name, dir, keep_git=False, **kwargs):
         shutil.rmtree(os.path.join(folder, ".git"))
 
 
-def setup_tmp_build(**kwargs):
+def setup_tmp_build(**kwargs) -> tempfile.TemporaryDirectory:
     dir = tempfile.TemporaryDirectory()
 
     with pkg_resources.path("builder.data", "Dockerfile") as template:
@@ -316,7 +377,7 @@ def setup_tmp_build(**kwargs):
     return dir
 
 
-def cleanup_build(dir):
+def cleanup_build(dir: Optional[tempfile.TemporaryDirectory]) -> None:
     if not dir:
         return
 
@@ -325,8 +386,14 @@ def cleanup_build(dir):
 
 
 def build_multi_arch(
-    client, dir, tag="sci-oer:custom", base=None, push=False, static_url=None, **kwargs
-):
+    client: docker.client.APIClient,
+    dir: str,
+    tag: str = "sci-oer:custom",
+    base: Optional[str] = None,
+    push: bool = False,
+    static_url: Optional[str] = None,
+    **kwargs,
+) -> None:
 
     args = {
         "BASE_IMAGE": base,
@@ -352,8 +419,13 @@ def build_multi_arch(
 
 
 def build_single_arch(
-    client, dir, tag="sci-oer:custom", base=None, static_url=None, **kwargs
-):
+    client: docker.client.APIClient,
+    dir: str,
+    tag: str = "sci-oer:custom",
+    base: Optional[str] = None,
+    static_url: Optional[str] = None,
+    **kwargs,
+) -> Image:
 
     args = {
         "BASE_IMAGE": base,
@@ -369,7 +441,7 @@ def build_single_arch(
     return image
 
 
-def extract_db(container, dir, **kwargs):
+def extract_db(container: Container, dir: str, **kwargs) -> None:
     _LOGGER.info("extracting wikijs database...")
     f = open(os.path.join(dir, "database.sqlite.tar"), "wb")
     bits, stat = container.get_archive("/course/wiki/database.sqlite")
@@ -379,44 +451,17 @@ def extract_db(container, dir, **kwargs):
     f.close()
 
 
-def create_network(client, **kwargs):
+def create_network(client: docker.client.APIClient, **kwargs) -> Network:
     return client.networks.create(generate_random_string(), attachable=True)
 
 
-def get_current_container(client, **kwargs):
+def get_current_container(
+    client: docker.client.APIClient, **kwargs
+) -> Optional[Container]:
     return client.containers.get(platform.node())
 
 
-class Authentication:
-    username = ""
-    password = ""
-    ssh_file = ""
-
-    def __init__(self, username, password, ssh_file=""):
-        self.username = username or ""
-        self.password = password or ""
-        self.ssh_file = ssh_file
-
-
-class Repository:
-    uri = ""
-    branch = "main"
-    verify_ssl = True
-    verify_host = True
-
-    auth = Authentication("", "")
-
-    def __init__(self, uri, branch, verify_ssl, verify_host=True):
-        self.uri = uri
-        self.branch = branch
-        self.verify_ssl = verify_ssl
-        self.verify_host = verify_host
-
-    def isSSH(self):
-        return not self.uri.startswith("https")
-
-
-def set_wiki_contents(host, repo, keep_git=False, **kwargs):
+def set_wiki_contents(host: str, repo: Repository, keep_git: bool = False, **kwargs):
     configure_wiki_repo(host, True, repo, **kwargs)
     sync_wiki_repo(host, **kwargs)
     import_wiki_repo(host, **kwargs)
@@ -426,11 +471,11 @@ def set_wiki_contents(host, repo, keep_git=False, **kwargs):
         remove_git_repo(host, **kwargs)
 
 
-def remove_git_repo(host, **kwargs):
-    configure_wiki_repo(host, False, Repository("", "", ""), **kwargs)
+def remove_git_repo(host: str, **kwargs) -> None:
+    configure_wiki_repo(host, False, Repository("", "", False), **kwargs)
 
 
-def sync_wiki_repo(host, **kwargs):
+def sync_wiki_repo(host: str, **kwargs) -> None:
     query = """mutation Storage {
         storage {
             executeAction (handler: "sync", targetKey: "git" ) {
@@ -446,7 +491,7 @@ def sync_wiki_repo(host, **kwargs):
     _LOGGER.warning("Done syncing wiki content")
 
 
-def import_wiki_repo(host, **kwargs):
+def import_wiki_repo(host: str, **kwargs):
     query = """mutation Storage {
         storage {
             executeAction (handler: "importAll", targetKey: "git" ) {
@@ -462,7 +507,7 @@ def import_wiki_repo(host, **kwargs):
     _LOGGER.warning("Done importing wiki content")
 
 
-def set_wiki_comments(host, enabled, **kwargs):
+def set_wiki_comments(host: str, enabled: bool, **kwargs):
 
     query = """mutation Site ($comments: Boolean!){
         site {
@@ -475,7 +520,7 @@ def set_wiki_comments(host, enabled, **kwargs):
     api_call(host, query, variables={"comments": enabled}, **kwargs)
 
 
-def set_wiki_title(host, title, **kwargs):
+def set_wiki_title(host: str, title: Optional[str], **kwargs):
 
     if title is None:
         _LOGGER.info("Custom title has not been configured skipping...")
@@ -492,7 +537,7 @@ def set_wiki_title(host, title, **kwargs):
     api_call(host, query, variables={"title": title}, **kwargs)
 
 
-def set_wiki_navigation_mode(host, mode, **kwargs):
+def set_wiki_navigation_mode(host: str, mode: str, **kwargs):
 
     if mode not in ["NONE", "TREE"]:
         _LOGGER.warning(f"Invalid navigation mode '{mode}'")
@@ -509,7 +554,7 @@ def set_wiki_navigation_mode(host, mode, **kwargs):
     api_call(host, query, variables={"mode": mode}, **kwargs)
 
 
-def load_ssh_key(keyFile):
+def load_ssh_key(keyFile: str) -> str:
 
     env_key_file = os.getenv(SSH_KEY_FILE_ENV)
 
@@ -519,7 +564,7 @@ def load_ssh_key(keyFile):
     if keyFileContents != "":
         _LOGGER.debug("Using ssh key specified with cli keyfile flag")
         return keyFile
-    elif envKeyFileContents != "":
+    elif env_key_file and envKeyFileContents != "":
         _LOGGER.debug(f"Using ssh key specified with {SSH_KEY_FILE_ENV} env variable")
         return env_key_file
     else:
@@ -527,7 +572,7 @@ def load_ssh_key(keyFile):
         return ""
 
 
-def load_ssh_key_from_file(keyFile):
+def load_ssh_key_from_file(keyFile: str) -> str:
 
     if keyFile is None or not os.path.isfile(keyFile):
         _LOGGER.info(f"the specified ssh key file `{keyFile}` does not exist")
@@ -538,7 +583,7 @@ def load_ssh_key_from_file(keyFile):
         return f.read()
 
 
-def configure_wiki_repo(host, enabled, repo, **kwargs):
+def configure_wiki_repo(host: str, enabled: bool, repo: Repository, **kwargs) -> None:
     query = """mutation ($targets: [StorageTargetInput]!) {
         storage {
             updateTargets(targets: $targets) {
@@ -605,8 +650,8 @@ def configure_wiki_repo(host, enabled, repo, **kwargs):
     api_call(host, query, variables=variables, **kwargs)
 
 
-def dissable_api(host, **kwargs):
-    query = """mutation Authentication {
+def dissable_api(host: str, **kwargs) -> None:
+    query: str = """mutation Authentication {
         authentication {
             setApiState (enabled: false ) {
                 responseResult { succeeded, errorCode, slug, message }
@@ -617,7 +662,7 @@ def dissable_api(host, **kwargs):
     api_call(host, query, **kwargs)
 
 
-def api_call(host, query, variables="{}", port=3000):
+def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> None:
 
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
@@ -637,7 +682,7 @@ def api_call(host, query, variables="{}", port=3000):
         raise Exception(f"Query failed to run with a {r.status_code}.")
 
 
-def check_if_container(client):
+def check_if_container(client: docker.client.APIClient) -> bool:
 
     try:
         get_current_container(client)
@@ -646,10 +691,10 @@ def check_if_container(client):
         return False
 
 
-def get_wiki_port(isContainer, container):
+def get_wiki_port(isContainer: bool, container: Container) -> int:
 
     if isContainer:
-        return "3000"
+        return 3000
 
     wikiPort = int(container.ports.get("3000/tcp")[0]["HostPort"])
     _LOGGER.info(f"Wiki running on port {wikiPort}")
@@ -657,7 +702,7 @@ def get_wiki_port(isContainer, container):
     return wikiPort
 
 
-def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
+def wait_for_wiki_to_be_ready(host: str, port: int = 3000, **kwargs):
     http = requests.Session()
     retry_strategy = Retry(total=5, backoff_factor=1)
     adapter = HTTPAdapter(max_retries=retry_strategy)
@@ -668,7 +713,7 @@ def wait_for_wiki_to_be_ready(host, port=3000, **kwargs):
         _LOGGER.info("wiki is ready")
 
 
-def get_real_file_path(container, fileName):
+def get_real_file_path(container: Container, fileName: str) -> str:
 
     mounts = [m for m in container.attrs["Mounts"] if m["Destination"] == fileName]
 
@@ -677,7 +722,7 @@ def get_real_file_path(container, fileName):
     return ""
 
 
-def run(opts, **kwargs):
+def run(opts: dict, **kwargs):
 
     # Checking incompatible arguments
 
@@ -718,11 +763,11 @@ def run(opts, **kwargs):
     containerized = check_if_container(client)
 
     realKey = sshKeyFile
-    network = None
+    network: Optional[Network] = None
     if containerized:
         _LOGGER.debug("Currently running in a docker container")
         network = create_network(client)
-        cleanup_resources["network"] = network
+        cleanup_resources.network = network
 
         this = get_current_container(client)
         network.connect(this)
@@ -737,10 +782,10 @@ def run(opts, **kwargs):
         [realKey, sshKeyFile],
     )
 
-    cleanup_resources["volume"] = volume
-    cleanup_resources["container"] = container
+    cleanup_resources.volume = volume
+    cleanup_resources.container = container
 
-    if containerized:
+    if network:
         network.connect(container)
 
     container.reload()
@@ -754,7 +799,7 @@ def run(opts, **kwargs):
         _LOGGER.error("Requests timed out, container failed to start.")
 
         stop_container(container)
-        if containerized:
+        if network:
             network.disconnect(container)
 
         delete_container(container)
@@ -762,7 +807,7 @@ def run(opts, **kwargs):
         return
 
     dir = setup_tmp_build()
-    cleanup_resources["build_dir"] = dir
+    cleanup_resources.build_dir = dir
 
     gitAuthentication = Authentication(
         opts["wiki_git_user"],
@@ -831,7 +876,7 @@ def run(opts, **kwargs):
     dissable_api(host, port=port)
 
     stop_container(container)
-    if containerized:
+    if network:
         network.disconnect(container)
 
     extract_db(container, dir.name)
@@ -861,7 +906,7 @@ def run(opts, **kwargs):
 
     cleanup_build(dir)
 
-    if containerized:
+    if network:
         network.disconnect(this)
         network.remove()
 
@@ -871,12 +916,12 @@ def run(opts, **kwargs):
 def signal_handler(sig, frame):
     print("Gracefully cleaning up all resources shutdown....")
 
-    delete_container(cleanup_resources["container"], force=True)
-    delete_volume(cleanup_resources["volume"])
-    if cleanup_resources["network"]:
-        cleanup_resources["network"].remove()
+    delete_container(cleanup_resources.container, force=True)
+    delete_volume(cleanup_resources.volume)
+    if cleanup_resources.network:
+        cleanup_resources.network.remove()
 
-    cleanup_build(cleanup_resources["build_dir"])
+    cleanup_build(cleanup_resources.build_dir)
 
     sys.exit(1)
 
