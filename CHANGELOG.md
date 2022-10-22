@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.8.2](https://github.com/sci-oer/automated-builder/releases/v0.8.2) (2022-10-22)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.1...v0.8.2)
+
+**Merged pull requests:**
+
+- fix: double quoted [\#156](https://github.com/sci-oer/automated-builder/pull/156) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.8.1](https://github.com/sci-oer/automated-builder/releases/v0.8.1) (2022-10-22)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.0...v0.8.1)
