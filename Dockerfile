@@ -19,7 +19,8 @@ VOLUME [ "/output" ]
 
 COPY . .
 
-RUN pip install . && rm -rf custom src
+ARG SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
+RUN pip install . && rm -rf builder
 
 ENTRYPOINT [ "./entrypoint.sh" ]
 
