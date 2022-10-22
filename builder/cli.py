@@ -413,10 +413,50 @@ def build_multi_arch(
 
     push = "" if not push else "--push"
 
+    # get the old builder
+    (old_builder, builder_name) = setup_buildx()
+
+    res = subprocess.run(
+        "docker buildx create --use", shell=True, check=True, capture_output=True
+    )
+    builder_name = res.stdout.decode("utf-8").strip()
     cmd = f"docker buildx build --progress=plain --platform {platforms} --tag {tag} {push} {buildArgs} {dir}"
     _LOGGER.debug(f"build command: `{cmd}`")
     subprocess.run(cmd, shell=True, check=True)
     _LOGGER.info("Done building custom image.")
+
+    cleanup_buildx(old_builder, builder_name)
+
+
+def setup_buildx() -> tuple:
+    res = subprocess.run(
+        "docker buildx inspect", shell=True, check=True, capture_output=True
+    )
+    old_builder = res.stdout.decode("utf-8").split("\n")[0].split(":")[1].strip()
+
+    builder_name = res.stdout.decode("utf-8").strip()
+    res = subprocess.run(
+        "docker buildx create --use", shell=True, check=True, capture_output=True
+    )
+    builder_name = res.stdout.decode("utf-8").strip()
+
+    return (old_builder, builder_name)
+
+
+def cleanup_buildx(old_builder: str, builder_name: str) -> None:
+    _LOGGER.info("Clean up buildx context")
+    subprocess.run(
+        f"docker buildx stop {builder_name}",
+        shell=True,
+        check=True,
+        capture_output=True,
+    )
+    subprocess.run(
+        f"docker buildx rm {builder_name}", shell=True, check=True, capture_output=True
+    )
+    subprocess.run(
+        f"docker buildx use {old_builder}", shell=True, check=True, capture_output=True
+    )
 
 
 def build_single_arch(

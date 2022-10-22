@@ -17,6 +17,13 @@ WORKDIR /app
 
 VOLUME [ "/output" ]
 
+ENV DOCKERVERSION=20.10.17
+RUN curl -fsSLO https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz \
+  && tar xzvf docker-${DOCKERVERSION}.tgz --strip 1 \
+                 -C /usr/local/bin docker/docker \
+  && rm docker-${DOCKERVERSION}.tgz
+COPY --from=docker/buildx-bin:latest /buildx /usr/libexec/docker/cli-plugins/docker-buildx
+
 COPY . .
 
 ARG SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION
