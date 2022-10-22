@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.8.1](https://github.com/sci-oer/automated-builder/releases/v0.8.1) (2022-10-22)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.0...v0.8.1)
+
+**Fixed bugs:**
+
+- fix: setuptools in docker image fails to get version number [\#155](https://github.com/sci-oer/automated-builder/pull/155) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.8.0](https://github.com/sci-oer/automated-builder/releases/v0.8.0) (2022-10-19)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.7.0...v0.8.0)
