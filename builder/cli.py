@@ -264,7 +264,7 @@ def start_container(
     client: docker.client.APIClient,
     volume: Volume,
     image: str,
-    keyFile: list[str],
+    keyFile: List[str],
     **kwargs,
 ) -> Container:
     name = f"auto-build-tmp-{generate_random_string()}"

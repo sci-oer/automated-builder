@@ -2,7 +2,7 @@
 
 
 import re
-from typing import Optional
+from typing import Optional, List
 
 
 def get_input(message: Optional[str] = None) -> str:
@@ -29,8 +29,8 @@ def prompt(
     return input_value
 
 
-def prompt_list(message: str, strip: bool = True, suffix: str = " ") -> list[str]:
-    values: list[str] = []
+def prompt_list(message: str, strip: bool = True, suffix: str = " ") -> List[str]:
+    values: List[str] = []
     content = prompt(message, strip=strip, suffix=suffix)
 
     while content is not None:
