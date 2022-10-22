@@ -37,8 +37,7 @@ jobs:
       - name: Setup the current date
         id: prep
         run: |
-          echo "::set-output name=date::$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          echo ::set-output name=tag::${GITHUB_REF#refs/*/}
+          echo "date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"" >> $GITHUB_OUTPUT
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v4
@@ -74,4 +73,4 @@ jobs:
           build-args: |
             BUILD_DATE=${{ steps.date.outputs.date }}
             VCS_REF=${{ github.sha }}
-            VERSION=${{ steps.date.outputs.tag }}
+            VERSION=${{ github.ref_name }}
