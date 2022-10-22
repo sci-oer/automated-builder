@@ -2,13 +2,16 @@
 
 
 import re
+from typing import Optional
 
 
-def get_input(message=None):
+def get_input(message: Optional[str] = None) -> str:
     return input(message)
 
 
-def prompt(message, default=None, strip=True, suffix=" "):
+def prompt(
+    message: str, default: Optional[str] = None, strip: bool = True, suffix: str = " "
+) -> Optional[str]:
     """Print a message and prompt user for input. Return user input."""
     if default is not None:
         prompt_text = "{0} [{1}]{2}".format(message, default, suffix)
@@ -26,8 +29,8 @@ def prompt(message, default=None, strip=True, suffix=" "):
     return input_value
 
 
-def prompt_list(message, strip=True, suffix=" "):
-    values = []
+def prompt_list(message: str, strip: bool = True, suffix: str = " ") -> list[str]:
+    values: list[str] = []
     content = prompt(message, strip=strip, suffix=suffix)
 
     while content is not None:
@@ -36,7 +39,7 @@ def prompt_list(message, strip=True, suffix=" "):
     return values
 
 
-def yesno(message, default=None, suffix=" "):
+def yesno(message: str, default: Optional[str] = None, suffix: str = " ") -> bool:
     """Prompt user to answer yes or no. Return True for yes and False for
     no."""
     if default == "yes":
