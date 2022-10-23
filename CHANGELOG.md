@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.9.1](https://github.com/sci-oer/automated-builder/releases/v0.9.1) (2022-10-23)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.9.0...v0.9.1)
+
+**Merged pull requests:**
+
+- fix: remove unsuported buildx platforms [\#164](https://github.com/sci-oer/automated-builder/pull/164) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.9.0](https://github.com/sci-oer/automated-builder/releases/v0.9.0) (2022-10-23)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.2...v0.9.0)
