@@ -1,5 +1,23 @@
 # Changelog
 
+## [v0.9.0](https://github.com/sci-oer/automated-builder/releases/v0.9.0) (2022-10-23)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.2...v0.9.0)
+
+**Implemented enhancements:**
+
+- Use docker heath check status instead of polling the wiki to see if the container is ready [\#153](https://github.com/sci-oer/automated-builder/issues/153)
+- Confirm that multi arch builds from within a docker container [\#123](https://github.com/sci-oer/automated-builder/issues/123)
+- Check that buildx is avalible before starting a multi arch build.  [\#122](https://github.com/sci-oer/automated-builder/issues/122)
+- Multi architecture builds [\#109](https://github.com/sci-oer/automated-builder/issues/109)
+- feat: if the container supports health checks wait for healthcheck [\#159](https://github.com/sci-oer/automated-builder/pull/159) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Merged pull requests:**
+
+- feat: check to see if buildx is enabled on startup [\#162](https://github.com/sci-oer/automated-builder/pull/162) ([MarshallAsch](https://github.com/MarshallAsch))
+- fix: add missing docker cli and buildx plugin when running in docker [\#160](https://github.com/sci-oer/automated-builder/pull/160) ([MarshallAsch](https://github.com/MarshallAsch))
+- feat: add type hints and pytype config file [\#157](https://github.com/sci-oer/automated-builder/pull/157) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.8.2](https://github.com/sci-oer/automated-builder/releases/v0.8.2) (2022-10-22)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.8.1...v0.8.2)
