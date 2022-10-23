@@ -428,6 +428,11 @@ def build_multi_arch(
     cleanup_buildx(old_builder, builder_name)
 
 
+def check_buildx() -> bool:
+    res = subprocess.run("docker buildx version >/dev/null 2>/dev/null", shell=True)
+    return res.returncode == 0
+
+
 def setup_buildx() -> Tuple[str, str]:
     res = subprocess.run(
         "docker buildx inspect", shell=True, check=True, capture_output=True
@@ -822,6 +827,12 @@ def run(opts: dict, **kwargs):
     sshKeyFile = load_ssh_key(os.path.expanduser(opts["key_file"] or ""))
     if sshKeyFile != "":
         sshKeyFile = os.path.realpath(sshKeyFile)
+
+    if opts["multi_arch"] and not check_buildx():
+        _LOGGER.error(
+            "docker buildx not present on system, cannot build for multi-arch."
+        )
+        sys.exit("Docker buildx not present")
 
     # starting main builder logic
     try:
