@@ -319,7 +319,6 @@ def create_volume(client: docker.client.APIClient, name: str) -> Volume:
 
 
 def push_image(client: docker.client.APIClient, registry: str, image: Image) -> None:
-
     toPush = image.tags[0]
     if registry is not None:
         toPush = f"{registry}/{toPush}"
@@ -395,7 +394,6 @@ def build_multi_arch(
     static_url: Optional[str] = None,
     **kwargs,
 ) -> None:
-
     args = {
         "BASE_IMAGE": base,
         "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -472,7 +470,6 @@ def build_single_arch(
     static_url: Optional[str] = None,
     **kwargs,
 ) -> Image:
-
     args = {
         "BASE_IMAGE": base,
         "BUILD_DATE": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -554,7 +551,6 @@ def import_wiki_repo(host: str, **kwargs):
 
 
 def set_wiki_comments(host: str, enabled: bool, **kwargs):
-
     query = """mutation Site ($comments: Boolean!){
         site {
             updateConfig (featurePageComments: $comments ) {
@@ -567,7 +563,6 @@ def set_wiki_comments(host: str, enabled: bool, **kwargs):
 
 
 def set_wiki_title(host: str, title: Optional[str], **kwargs):
-
     if title is None:
         _LOGGER.info("Custom title has not been configured skipping...")
         return
@@ -584,7 +579,6 @@ def set_wiki_title(host: str, title: Optional[str], **kwargs):
 
 
 def set_wiki_navigation_mode(host: str, mode: str, **kwargs):
-
     if mode not in ["NONE", "TREE"]:
         _LOGGER.warning(f"Invalid navigation mode '{mode}'")
         return
@@ -601,7 +595,6 @@ def set_wiki_navigation_mode(host: str, mode: str, **kwargs):
 
 
 def load_ssh_key(keyFile: str) -> str:
-
     env_key_file = os.getenv(SSH_KEY_FILE_ENV)
 
     keyFileContents = load_ssh_key_from_file(keyFile)
@@ -619,7 +612,6 @@ def load_ssh_key(keyFile: str) -> str:
 
 
 def load_ssh_key_from_file(keyFile: str) -> str:
-
     if keyFile is None or not os.path.isfile(keyFile):
         _LOGGER.info(f"the specified ssh key file `{keyFile}` does not exist")
         return ""
@@ -709,7 +701,6 @@ def dissable_api(host: str, **kwargs) -> None:
 
 
 def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> None:
-
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
     body = {"query": query, "variables": variables}
@@ -729,7 +720,6 @@ def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> N
 
 
 def check_if_container(client: docker.client.APIClient) -> bool:
-
     try:
         get_current_container(client)
         return True
@@ -738,7 +728,6 @@ def check_if_container(client: docker.client.APIClient) -> bool:
 
 
 def get_wiki_port(isContainer: bool, container: Container) -> int:
-
     if isContainer:
         return 3000
 
@@ -767,7 +756,6 @@ def wait_for_wiki_to_be_ready_no_healthcheck(
 
 
 def wait_for_wiki_to_be_ready_healthcheck(container: Container, **kwargs) -> bool:
-
     status: str = ""
     while True:
         container.reload()
@@ -786,7 +774,8 @@ def wait_for_wiki_to_be_ready(
     container: Container, host: str, port: int = 3000, **kwargs
 ) -> bool:
     """If the container has a healthcheck then it will block until it has settled on healthy or unhealthy
-    otherwise this will wait until the wiki returns a 200 status code or hits the retry limit."""
+    otherwise this will wait until the wiki returns a 200 status code or hits the retry limit.
+    """
 
     if "Health" in container.attrs["State"]:
         return wait_for_wiki_to_be_ready_healthcheck(container)
@@ -795,7 +784,6 @@ def wait_for_wiki_to_be_ready(
 
 
 def get_real_file_path(container: Container, fileName: str) -> str:
-
     mounts = [m for m in container.attrs["Mounts"] if m["Destination"] == fileName]
 
     if len(mounts) != 0:
@@ -804,7 +792,6 @@ def get_real_file_path(container: Container, fileName: str) -> str:
 
 
 def run(opts: dict, **kwargs):
-
     # Checking incompatible arguments
 
     opts["wiki_navigation"] = opts["wiki_navigation"].strip().upper()
