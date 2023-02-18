@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.10.0](https://github.com/sci-oer/automated-builder/releases/v0.10.0) (2023-02-18)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.9.1...v0.10.0)
+
+**Merged pull requests:**
+
+- chore\(deps\): update docker/build-push-action action to v4 [\#171](https://github.com/sci-oer/automated-builder/pull/171) ([renovate[bot]](https://github.com/apps/renovate))
+- fix: linter errors [\#170](https://github.com/sci-oer/automated-builder/pull/170) ([MarshallAsch](https://github.com/MarshallAsch))
+- chore\(deps\): update dependency requests to v2.28.2 [\#169](https://github.com/sci-oer/automated-builder/pull/169) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): bump gitpython from 3.1.27 to 3.1.30 [\#168](https://github.com/sci-oer/automated-builder/pull/168) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore\(deps\): update pypa/gh-action-pypi-publish action to v1.6.4 [\#166](https://github.com/sci-oer/automated-builder/pull/166) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update dependency docker to v6.0.1 [\#165](https://github.com/sci-oer/automated-builder/pull/165) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update dependency gitpython to v3.1.31 [\#147](https://github.com/sci-oer/automated-builder/pull/147) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [v0.9.1](https://github.com/sci-oer/automated-builder/releases/v0.9.1) (2022-10-23)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.9.0...v0.9.1)
