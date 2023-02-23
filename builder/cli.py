@@ -34,7 +34,7 @@ WikiJS options:
 
 Docker options:
   -t --tag=<tag>                    The docker tag to use for the generated image. This should exclude the registry portion. [default: sci-oer/custom:latest]
-  -b --base=<base>                  The base image to use [default: marshallasch/java-resource:latest]
+  -b --base=<base>                  The base image to use [default: scioer/java-resource:latest]
   --no-pull                         Don't pull the base image first
   --push                            Push the image to the DockerHub registry.
   --multi-arch                      Build the docker image for amd64 and arm64. [default: False]
