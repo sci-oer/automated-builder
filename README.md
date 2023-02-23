@@ -25,13 +25,13 @@ Git must be installed in-order to load and configure the seeded content.
 
 ## Building this Docker Image
 
-This image has been published to [Docker Hub](https://hub.docker.com/r/marshallasch/automated-builder), but the follow command can be used to build the image locally.
+This image has been published to [Docker Hub](https://hub.docker.com/r/marshascioerllasch/automated-builder), but the follow command can be used to build the image locally.
 
 ```bash
 docker build \
     --build-arg GIT_COMMIT=$(git rev-parse -q --verify HEAD) \
     --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
-    -t marshallasch/automated-builder:latest .
+    -t scioer/automated-builder:latest .
 ```
 
 ## Creating a Custom Image
@@ -56,13 +56,13 @@ There are currently three methods that can be used to create a customized image.
 
 ### Using Docker
 
-For convenience a prebuilt [Docker image](https://hub.docker.com/r/marshallasch/automated-builder) has been published that includes all the dependencies needed to generate a custom image.
+For convenience a prebuilt [Docker image](https://hub.docker.com/r/scioer/automated-builder) has been published that includes all the dependencies needed to generate a custom image.
 
 For the `automated-builder` container to be able to create the custom docker image it must have the docker socket passed into the container.
 
 ```bash
 $ docker run -v /var/run/docker.sock:/var/run/docker.sock \
-    marshallasch/automated-builder:latest <options here>
+    scioer/automated-builder:latest <options here>
 ```
 
 
