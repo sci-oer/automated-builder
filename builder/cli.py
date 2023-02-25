@@ -319,15 +319,14 @@ def create_volume(client: docker.client.APIClient, name: str) -> Volume:
     return client.volumes.create(f"{name}-{generate_random_string()}")
 
 
-def push_image(client: docker.client.APIClient, registry: str, image: Image) -> None:
+def push_image(client: docker.client.APIClient, image: Image) -> None:
     toPush = image.tags[0]
-    if registry is not None:
-        toPush = f"{registry}/{toPush}"
-        image.tag(toPush)
 
     try:
+        _LOGGER.info(f"Pushing `{toPush}` image to registry....")
         # this can also return a generator to be used for a progress bar
         client.images.push(toPush)
+        _LOGGER.info(f"Done pushing `{toPush}`")
     except:
         _LOGGER.error(
             "Failed to push the image to the registry, are you sure you have properly authenticated with the remote registry"
@@ -536,7 +535,7 @@ def sync_wiki_repo(host: str, **kwargs) -> None:
         _LOGGER.warning("Done syncing wiki content")
     except:
         error_message = get_wiki_storage_status(host, **kwargs)
-        _LOGGER.error(f"Failed to sync the wiki: ${error_message}")
+        _LOGGER.error(f"Failed to sync the wiki: {error_message}")
         raise Exception("Failed to sync the wiki")
 
 
@@ -557,7 +556,7 @@ def import_wiki_repo(host: str, **kwargs):
         _LOGGER.warning("Done importing wiki content")
     except:
         error_message = get_wiki_storage_status(host, **kwargs)
-        _LOGGER.error(f"Failed to import the wiki: ${error_message}")
+        _LOGGER.error(f"Failed to import the wiki: {error_message}")
         raise Exception("Failed to import the wiki")
 
 
@@ -1005,13 +1004,16 @@ def run(opts: dict, **kwargs):
         )
     else:
         _LOGGER.info("Starting single platform build")
-        build_single_arch(
+        image = build_single_arch(
             client,
             dir.name,
             tag=opts["tag"],
             base=opts["base"],
             static_url=opts["static_url"],
         )
+
+        if opts["push"]:
+            push_image(client, image)
 
     cleanup_build(dir)
 
