@@ -531,8 +531,12 @@ def sync_wiki_repo(host: str, **kwargs) -> None:
     _LOGGER.warning(
         "Syncing all the wiki content from the git repository, this may take a while..."
     )  # noqa: E501
-    api_call(host, query, **kwargs)
-    _LOGGER.warning("Done syncing wiki content")
+    try:
+        api_call(host, query, **kwargs)
+        _LOGGER.warning("Done syncing wiki content")
+    except:
+        error_message = get_wiki_storage_status(host, **kwargs)
+        raise Exception(f"Failed to import the wiki: ${error_message}")
 
 
 def import_wiki_repo(host: str, **kwargs):
@@ -547,8 +551,29 @@ def import_wiki_repo(host: str, **kwargs):
     _LOGGER.warning(
         "Importing all the wiki content from the git repository, this may take a while..."
     )  # noqa: E501
-    api_call(host, query, **kwargs)
-    _LOGGER.warning("Done importing wiki content")
+    try:
+        api_call(host, query, **kwargs)
+        _LOGGER.warning("Done importing wiki content")
+    except:
+        error_message = get_wiki_storage_status(host, **kwargs)
+        raise Exception(f"Failed to import the wiki: ${error_message}")
+
+
+def get_wiki_storage_status(host: str, **kwargs) -> str:
+    query = """{
+        storage {
+            status {
+            key
+            status
+            message
+            }
+        }
+    }"""
+
+    _LOGGER.info("Getting the status of the wiki storage...")  # noqa: E501
+    message = api_call(host, query, **kwargs)
+    _LOGGER.info("Done fetching the wiki status")
+    return message
 
 
 def set_wiki_comments(host: str, enabled: bool, **kwargs):
@@ -701,7 +726,7 @@ def dissable_api(host: str, **kwargs) -> None:
     api_call(host, query, **kwargs)
 
 
-def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> None:
+def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> str:
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
 
     body = {"query": query, "variables": variables}
@@ -709,12 +734,19 @@ def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> N
     r = requests.post(f"http://{host}:{port}/graphql", json=body, headers=headers)
 
     payload = r.json()
-    payload = payload["data"][list(payload["data"].keys())[0]]
-    succeeded = payload[list(payload.keys())[0]]["responseResult"]["succeeded"]
-    message = payload[list(payload.keys())[0]]["responseResult"]["message"]
+
+    if "responseResult" in query:
+        payload = payload["data"][list(payload["data"].keys())[0]]
+        succeeded = payload[list(payload.keys())[0]]["responseResult"]["succeeded"]
+        message = payload[list(payload.keys())[0]]["responseResult"]["message"]
+    else:
+        payload = payload["data"][list(payload["data"].keys())[0]]
+        succeeded = True
+        message = payload[list(payload.keys())[0]][0]["message"]
 
     if r.status_code == 200 and succeeded:
-        _LOGGER.info(message or "API call was successful")
+        _LOGGER.debug(message or "API call was successful")
+        return message
     else:
         _LOGGER.error(json.dumps(r.json(), indent=2))
         raise Exception(f"Query failed to run with a {r.status_code}.")
