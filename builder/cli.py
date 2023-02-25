@@ -294,6 +294,7 @@ def change_key_permissions(container: Container, keyFile: str, **kwargs):
     )
     container.exec_run(f'sudo cp "{keyFile}" "{keyFile}.CONTAINER"')
     container.exec_run(f'sudo chown 1000:1000 "{keyFile}.CONTAINER"')
+    container.exec_run(f'sudo chmod 600 "{keyFile}.CONTAINER"')
 
 
 def stop_container(container, **kwargs):
