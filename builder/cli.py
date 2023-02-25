@@ -536,7 +536,8 @@ def sync_wiki_repo(host: str, **kwargs) -> None:
         _LOGGER.warning("Done syncing wiki content")
     except:
         error_message = get_wiki_storage_status(host, **kwargs)
-        raise Exception(f"Failed to import the wiki: ${error_message}")
+        _LOGGER.error(f"Failed to sync the wiki: ${error_message}")
+        raise Exception("Failed to sync the wiki")
 
 
 def import_wiki_repo(host: str, **kwargs):
@@ -556,7 +557,8 @@ def import_wiki_repo(host: str, **kwargs):
         _LOGGER.warning("Done importing wiki content")
     except:
         error_message = get_wiki_storage_status(host, **kwargs)
-        raise Exception(f"Failed to import the wiki: ${error_message}")
+        _LOGGER.error(f"Failed to import the wiki: ${error_message}")
+        raise Exception("Failed to import the wiki")
 
 
 def get_wiki_storage_status(host: str, **kwargs) -> str:
