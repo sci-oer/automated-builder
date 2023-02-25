@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.12.0](https://github.com/sci-oer/automated-builder/releases/v0.12.0) (2023-02-25)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.11.0...v0.12.0)
+
+**Merged pull requests:**
+
+- chore: updated image labels [\#175](https://github.com/sci-oer/automated-builder/pull/175) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.11.0](https://github.com/sci-oer/automated-builder/releases/v0.11.0) (2023-02-23)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.10.0...v0.11.0)
