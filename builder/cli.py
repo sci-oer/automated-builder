@@ -78,6 +78,34 @@ from requests.packages.urllib3.util.retry import Retry
 
 from builder.prompt import prompt, prompt_list, yesno
 
+
+from .docker import (
+    push_image,
+    create_network,
+    start_container,
+    stop_container,
+    delete_container,
+    fetch_latest,
+    check_if_container,
+    get_current_container,
+    create_volume,
+    delete_volume,
+)
+from .helper import Authentication, Repository, CleanupWraper
+from .wiki import (
+    set_wiki_contents,
+    remove_git_repo,
+    sync_wiki_repo,
+    import_wiki_repo,
+    get_wiki_storage_status,
+    set_wiki_comments,
+    set_wiki_title,
+    set_wiki_navigation_mode,
+    configure_wiki_repo,
+    dissable_api,
+    api_call,
+)
+
 try:
     from git import GitCommandError, Repo  # noqa: I900
 except:
@@ -91,56 +119,7 @@ except:
 SSH_KEY_FILE_ENV: str = "SSH_KEY_FILE"
 SSH_OPTIONS: str = "SSH_OPTIONS"
 
-# this is the api token that has been built into the base-resource container
-API_TOKEN: str = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGkiOjEsImdycCI6MSwiaWF0IjoxNjQyOTcyMTk5LCJleHAiOjE3Mzc2NDQ5OTksImF1ZCI6InVybjp3aWtpLmpzIiwiaXNzIjoidXJuOndpa2kuanMifQ.xkvgFfpYw2OgB0Z306YzVjOmuYzrKgt_fZLXetA0ThoAgHNH1imou2YCh-JBXSBCILbuYvfWMSwOhf5jAMKT7O1QJNMhs5W0Ls7Cj5tdlOgg-ufMZaLH8X2UQzkD-1o3Dhpv_7hs9G8xt7qlqCz_-DwroOGUGPaGW6wrtUfylUyYh86V9eJveRJqzZXiGFY3n6Z3DuzIVZtz-DoCHMaDceSG024BFOD-oexMCnAxTpk5OalEhwucaYHS2sNCLpmwiEGHSswpiaMq9-JQasVJtQ_fZ9yU_ZZLBlc0AJs1mOENDTI6OBZ3IS709byqxEwSPnWaF_Tk7fcGnCYk-3gixA"  # noqa E501
-
 _LOGGER = logging.getLogger(__name__)
-
-
-class Authentication:
-    username: str = ""
-    password: str = ""
-    ssh_file: str = ""
-
-    def __init__(
-        self, username: Optional[str], password: Optional[str], ssh_file: str = ""
-    ):
-        self.username = username or ""
-        self.password = password or ""
-        self.ssh_file = ssh_file
-
-
-class Repository:
-    uri: str = ""
-    branch: Optional[str]
-    verify_ssl: bool = True
-    verify_host: bool = True
-
-    auth = Authentication("", "")
-
-    def __init__(
-        self,
-        uri: str,
-        branch: Optional[str],
-        verify_ssl: bool,
-        verify_host: bool = True,
-    ):
-        self.uri = uri
-        self.branch = branch
-        self.verify_ssl = verify_ssl
-        self.verify_host = verify_host
-
-    def isSSH(self) -> bool:
-        return not self.uri.startswith("https")
-
-
-@dataclass
-class CleanupWraper:
-    container: Optional[Container]
-    volume: Optional[Volume]
-    network: Optional[Network]
-    build_dir: Optional[tempfile.TemporaryDirectory]
-
 
 cleanup_resources = CleanupWraper(None, None, None, None)
 
@@ -253,41 +232,6 @@ def ask_interactive(opts: dict) -> dict:
     return input
 
 
-def fetch_latest(client: docker.client.APIClient, repository: str, **kwargs) -> None:
-    _LOGGER.info(
-        f'pulling latest version of the "{repository}" docker image, this may take a while...'
-    )
-    client.images.pull(repository)
-    _LOGGER.info("Done pulling the latest docker image")
-
-
-def start_container(
-    client: docker.client.APIClient,
-    volume: Volume,
-    image: str,
-    keyFile: List[str],
-    **kwargs,
-) -> Container:
-    name = f"auto-build-tmp-{generate_random_string()}"
-
-    volumes = [f"{volume.name}:/course"]
-    if keyFile[0] != "" and keyFile[1] != "":
-        volumes.append(f"{keyFile[0]}:{keyFile[1]}:ro")
-
-    _LOGGER.info(f"starting `{image}` container as `{name}`...")
-    onHost = not check_if_container(client)
-    container = client.containers.run(
-        image,
-        publish_all_ports=onHost,
-        name=name,
-        tty=True,
-        detach=True,
-        volumes=volumes,
-    )
-
-    return container
-
-
 def change_key_permissions(container: Container, keyFile: str, **kwargs):
     _LOGGER.info(
         "Copying the SSH key within the container to set the correct ownership"
@@ -295,50 +239,6 @@ def change_key_permissions(container: Container, keyFile: str, **kwargs):
     container.exec_run(f'sudo cp "{keyFile}" "{keyFile}.CONTAINER"')
     container.exec_run(f'sudo chown 1000:1000 "{keyFile}.CONTAINER"')
     container.exec_run(f'sudo chmod 600 "{keyFile}.CONTAINER"')
-
-
-def stop_container(container, **kwargs):
-    _LOGGER.info("stopping docker container...")
-    container.stop()
-
-
-def delete_container(container: Optional[Container], force: bool = False, **kwargs):
-    if not container:
-        return
-
-    _LOGGER.info("Deleteing setup container...")
-    container.remove(force=force)
-
-
-def generate_random_string(length: int = 10) -> str:
-    letters = string.ascii_letters
-    return "".join(random.choice(letters) for i in range(length))
-
-
-def create_volume(client: docker.client.APIClient, name: str) -> Volume:
-    return client.volumes.create(f"{name}-{generate_random_string()}")
-
-
-def push_image(client: docker.client.APIClient, image: Image) -> None:
-    toPush = image.tags[0]
-
-    try:
-        _LOGGER.info(f"Pushing `{toPush}` image to registry....")
-        # this can also return a generator to be used for a progress bar
-        client.images.push(toPush)
-        _LOGGER.info(f"Done pushing `{toPush}`")
-    except:
-        _LOGGER.error(
-            "Failed to push the image to the registry, are you sure you have properly authenticated with the remote registry"
-        )
-
-
-def delete_volume(volume: Optional[Volume], **kwargs) -> None:
-    if not volume:
-        return
-
-    _LOGGER.info("Deleteing setup volume...")
-    volume.remove()
 
 
 def clone_repo(repo: Repository, name: str, dir: str, keep_git: bool = False, **kwargs):
@@ -494,131 +394,10 @@ def extract_db(container: Container, dir: str, **kwargs) -> None:
     f.close()
 
 
-def create_network(client: docker.client.APIClient, **kwargs) -> Network:
-    return client.networks.create(generate_random_string(), attachable=True)
-
-
 def get_current_container(
     client: docker.client.APIClient, **kwargs
 ) -> Optional[Container]:
     return client.containers.get(platform.node())
-
-
-def set_wiki_contents(host: str, repo: Repository, keep_git: bool = False, **kwargs):
-    configure_wiki_repo(host, True, repo, **kwargs)
-    sync_wiki_repo(host, **kwargs)
-    import_wiki_repo(host, **kwargs)
-
-    if not keep_git:
-        _LOGGER.info("removing git repo from config")
-        remove_git_repo(host, **kwargs)
-
-
-def remove_git_repo(host: str, **kwargs) -> None:
-    configure_wiki_repo(host, False, Repository("", "", False), **kwargs)
-
-
-def sync_wiki_repo(host: str, **kwargs) -> None:
-    query = """mutation Storage {
-        storage {
-            executeAction (handler: "sync", targetKey: "git" ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    _LOGGER.warning(
-        "Syncing all the wiki content from the git repository, this may take a while..."
-    )  # noqa: E501
-    try:
-        api_call(host, query, **kwargs)
-        _LOGGER.warning("Done syncing wiki content")
-    except:
-        error_message = get_wiki_storage_status(host, **kwargs)
-        _LOGGER.error(f"Failed to sync the wiki: {error_message}")
-        raise Exception("Failed to sync the wiki")
-
-
-def import_wiki_repo(host: str, **kwargs):
-    query = """mutation Storage {
-        storage {
-            executeAction (handler: "importAll", targetKey: "git" ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    _LOGGER.warning(
-        "Importing all the wiki content from the git repository, this may take a while..."
-    )  # noqa: E501
-    try:
-        api_call(host, query, **kwargs)
-        _LOGGER.warning("Done importing wiki content")
-    except:
-        error_message = get_wiki_storage_status(host, **kwargs)
-        _LOGGER.error(f"Failed to import the wiki: {error_message}")
-        raise Exception("Failed to import the wiki")
-
-
-def get_wiki_storage_status(host: str, **kwargs) -> str:
-    query = """{
-        storage {
-            status {
-            key
-            status
-            message
-            }
-        }
-    }"""
-
-    _LOGGER.info("Getting the status of the wiki storage...")  # noqa: E501
-    message = api_call(host, query, **kwargs)
-    _LOGGER.info("Done fetching the wiki status")
-    return message
-
-
-def set_wiki_comments(host: str, enabled: bool, **kwargs):
-    query = """mutation Site ($comments: Boolean!){
-        site {
-            updateConfig (featurePageComments: $comments ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    api_call(host, query, variables={"comments": enabled}, **kwargs)
-
-
-def set_wiki_title(host: str, title: Optional[str], **kwargs):
-    if title is None:
-        _LOGGER.info("Custom title has not been configured skipping...")
-        return
-
-    query = """mutation Site ($title: String){
-        site {
-            updateConfig (title: $title ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    api_call(host, query, variables={"title": title}, **kwargs)
-
-
-def set_wiki_navigation_mode(host: str, mode: str, **kwargs):
-    if mode not in ["NONE", "TREE"]:
-        _LOGGER.warning(f"Invalid navigation mode '{mode}'")
-        return
-
-    query = """mutation Navigation ($mode: NavigationMode!){
-        navigation {
-            updateConfig (mode: $mode ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    api_call(host, query, variables={"mode": mode}, **kwargs)
 
 
 def load_ssh_key(keyFile: str) -> str:
@@ -646,119 +425,6 @@ def load_ssh_key_from_file(keyFile: str) -> str:
     with open(keyFile, "r") as f:
         _LOGGER.info(f"found ssh key file: `{keyFile}`")
         return f.read()
-
-
-def configure_wiki_repo(host: str, enabled: bool, repo: Repository, **kwargs) -> None:
-    query = """mutation ($targets: [StorageTargetInput]!) {
-        storage {
-            updateTargets(targets: $targets) {
-                responseResult {
-                    succeeded
-                    errorCode
-                    message
-                }
-            }
-        }
-    }"""
-
-    keyFile = f"{repo.auth.ssh_file}.CONTAINER" if repo.auth.ssh_file else ""
-    variables = {
-        "targets": [
-            {
-                "isEnabled": True,
-                "key": "git",
-                "mode": "pull",
-                "syncInterval": "PT5M",
-                "config": [
-                    {
-                        "key": "authType",
-                        "value": f'{{"v": "{"ssh" if repo.isSSH() else "basic"}"}}',
-                    },
-                    {"key": "repoUrl", "value": f'{{"v": "{repo.uri}"}}'},
-                    {"key": "branch", "value": f'{{"v": "{repo.branch}"}}'},
-                    {
-                        "key": "sshPrivateKeyMode",
-                        "value": '{"v": "path"}',
-                    },
-                    {
-                        "key": "sshPrivateKeyPath",
-                        "value": f'{{"v": "{keyFile}"}}',
-                    },
-                    {
-                        "key": "sshPrivateKeyContent",
-                        "value": '{"v": ""}',
-                    },
-                    {
-                        "key": "verifySSL",
-                        "value": f'{{"v": {"true" if repo.verify_ssl else "false"}}}',
-                    },
-                    {
-                        "key": "basicUsername",
-                        "value": f'{{"v": "{repo.auth.username if repo.auth.username is not None else "" }"}}',
-                    },
-                    {
-                        "key": "basicPassword",
-                        "value": f'{{"v": "{repo.auth.password if repo.auth.password is not None else "" }"}}',
-                    },
-                    {"key": "defaultEmail", "value": '{ "v": "sci-oer@example.com"}'},
-                    {
-                        "key": "defaultName",
-                        "value": '{ "v": "Open Educational Resource Container"}',
-                    },
-                    {"key": "localRepoPath", "value": '{ "v": "./data/repo"}'},
-                    {"key": "gitBinaryPath", "value": '{ "v": ""}'},
-                ],
-            }
-        ]
-    }
-
-    api_call(host, query, variables=variables, **kwargs)
-
-
-def dissable_api(host: str, **kwargs) -> None:
-    query: str = """mutation Authentication {
-        authentication {
-            setApiState (enabled: false ) {
-                responseResult { succeeded, errorCode, slug, message }
-            }
-        }
-    }"""
-
-    api_call(host, query, **kwargs)
-
-
-def api_call(host: str, query: str, variables: dict = {}, port: int = 3000) -> str:
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-
-    body = {"query": query, "variables": variables}
-
-    r = requests.post(f"http://{host}:{port}/graphql", json=body, headers=headers)
-
-    payload = r.json()
-
-    if "responseResult" in query:
-        payload = payload["data"][list(payload["data"].keys())[0]]
-        succeeded = payload[list(payload.keys())[0]]["responseResult"]["succeeded"]
-        message = payload[list(payload.keys())[0]]["responseResult"]["message"]
-    else:
-        payload = payload["data"][list(payload["data"].keys())[0]]
-        succeeded = True
-        message = payload[list(payload.keys())[0]][0]["message"]
-
-    if r.status_code == 200 and succeeded:
-        _LOGGER.debug(message or "API call was successful")
-        return message
-    else:
-        _LOGGER.error(json.dumps(r.json(), indent=2))
-        raise Exception(f"Query failed to run with a {r.status_code}.")
-
-
-def check_if_container(client: docker.client.APIClient) -> bool:
-    try:
-        get_current_container(client)
-        return True
-    except docker.errors.NotFound:
-        return False
 
 
 def get_wiki_port(isContainer: bool, container: Container) -> int:
