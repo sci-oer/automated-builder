@@ -2,7 +2,17 @@
 
 
 import re
+import sys
 from typing import Optional, List
+
+try:
+    import readline
+except:
+    if sys.platform == "win32" or sys.platform == "cygwin":
+        try:
+            from pyreadline3 import Readline
+        except:
+            pass
 
 
 def get_input(message: Optional[str] = None) -> str:
