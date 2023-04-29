@@ -6,14 +6,16 @@ This command will take the base sci-oer image and create a custom image pre fill
 with all the specified content.
 
 Usage:
-  scioer-builder [options] [ --example=<examples>... ]
+  scioer-builder [options] [ --example=<examples>... ] [ --example-dir=<examples>... ]
   scioer-builder (-h | --help)
 
 Options:
  -j --jupyter-repo=<jupyter>        The git repository to fetch the builtin jupyter notebooks from. The default branch will be used.
+ --jupyter-directory=<jupyter>      A path to the directory containing the builtin jupyter notebooks from.
  -l --lectures-repo=<lecture>       The git repository to fetch the builtin lessons content. The default branch will be used.
  --lectures-directory=<lecture>     A path to the directory containing the builtin lessons content. Cannot be used with `--lectures-repo`.
  -e --example=<examples>...         A list of repositories to fetch worked examples from. The default branch will be used.
+ --example-dir=<examples>...        A list of directories to include worked examples from.
  --static-url=<url>                 A url to a public server that holds the static lectures content, so it does not need to be included to reduce the image size.
  --motd-file=<file>                 A file that contains the content of the Message Of The Day, to be printed when the container starts and when a user gets a shell in the container.
 
@@ -249,6 +251,10 @@ def ask_interactive(opts: dict) -> dict:
         "Enter the git repository that holds the Jupyter Notebook files (leave blank if not being used)",
         default=input["jupyter_repo"],
     )
+    input["jupyter_directory"]: str = prompt(
+        "Enter the directory that contains the Jupyter Notebook files (leave blank if not being used)",
+        default=input["jupyter_directory"],
+    )
     input["lectures_repo"]: str = prompt(
         "Enter the git repository that holds the Jupyter Lecture video files (leave blank if not being used)",
         default=input["lectures_repo"],
@@ -259,6 +265,9 @@ def ask_interactive(opts: dict) -> dict:
     )
     input["example"]: List[str] = prompt_list(
         "Enter a git repository that contains an example project"
+    )
+    input["example_dir"]: List[str] = prompt_list(
+        "Enter a directory that contains an example project"
     )
 
     print("")
@@ -867,6 +876,12 @@ def run(opts: dict, **kwargs):
         )
         sys.exit("Incompatible arguments")
 
+    if opts["jupyter_repo"] is not None and opts["jupyter_directory"] is not None:
+        _LOGGER.error(
+            "Cannot specify both `--jupyter-repo` and `--jupyter-directory`, only one can be used at a time."
+        )
+        sys.exit("Incompatible arguments")
+
     motdFile = None
     if opts["motd_file"]:
         motdFile = os.path.realpath(os.path.expanduser(opts["motd_file"]))
@@ -959,7 +974,10 @@ def run(opts: dict, **kwargs):
     )
     lecturesRepo.auth = gitAuthentication
 
-    clone_repo(jupyterRepo, "jupyter", dir.name, keep_git=opts["keep_git"])
+    if opts["jupyter_directory"]:
+        shutil.copytree(opts["jupyter_directory"], os.path.join(dir.name, "jupyter"))
+    else:
+        clone_repo(jupyterRepo, "jupyter", dir.name, keep_git=opts["keep_git"])
 
     if opts["lectures_directory"]:
         shutil.copytree(opts["lectures_directory"], os.path.join(dir.name, "lectures"))
@@ -981,6 +999,14 @@ def run(opts: dict, **kwargs):
         break
     else:
         _LOGGER.info("no example repos were specified, skipping...")
+
+    for example in opts["example_dir"]:
+        target = examples
+        if len(opts["example_dir"]) > 1:
+            target = os.path.join(examples.name, os.path.basename(example))
+        shutil.copytree(example, target, dirs_exist_ok=True)
+    else:
+        _LOGGER.info("no example directories were specified, skipping...")
 
     if motdFile:
         _LOGGER.info("Copying custom motd.txt file...")
