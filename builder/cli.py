@@ -65,7 +65,8 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from time import sleep
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
+from tqdm import tqdm
 
 import colorlog
 import docker
@@ -142,9 +143,10 @@ class CleanupWraper:
     volume: Optional[Volume]
     network: Optional[Network]
     build_dir: Optional[tempfile.TemporaryDirectory]
+    progress_bar: Optional[Any]
 
 
-cleanup_resources = CleanupWraper(None, None, None, None)
+cleanup_resources = CleanupWraper(None, None, None, None, None)
 
 
 def _make_opts(args: dict) -> dict:
@@ -909,9 +911,11 @@ def run(opts: dict, **kwargs):
         )
         sys.exit("Docker is not running")
 
+    progress_bar = tqdm(total=20, unit="steps", desc="Getting ready to build image")
+
     if not opts["no_pull"]:
         fetch_latest(client, opts["base"])
-
+        progress_bar.update(1)
     this = None
     containerized = check_if_container(client)
 
@@ -928,15 +932,19 @@ def run(opts: dict, **kwargs):
         realKey = get_real_file_path(this, opts["key_file"])
 
     volume = create_volume(client, "course")
+
+    progress_bar.update(1)  # docker resources created, next step
     container = start_container(
         client,
         volume,
         opts["base"],
         [realKey, sshKeyFile],
     )
+    progress_bar.update(1)  # image started, next step
 
     cleanup_resources.volume = volume
     cleanup_resources.container = container
+    cleanup_resources.progress_bar = progress_bar
 
     if network:
         network.connect(container)
@@ -946,7 +954,10 @@ def run(opts: dict, **kwargs):
     port = get_wiki_port(containerized, container)
     host = "127.0.0.1" if not containerized else container.name
 
+    progress_bar.update(1)  # image started, next step
     started = wait_for_wiki_to_be_ready(container, host, port)
+    progress_bar.update(1)  # image started, next step
+    progress_bar.set_description("Building custom resource")
 
     if not started:
         _LOGGER.error("Container failed to start.")
@@ -957,6 +968,7 @@ def run(opts: dict, **kwargs):
 
         delete_container(container)
         delete_volume(volume)
+        progress_bar.close()
         return
 
     dir = setup_tmp_build()
@@ -982,11 +994,13 @@ def run(opts: dict, **kwargs):
         shutil.copytree(opts["jupyter_directory"], os.path.join(dir.name, "jupyter"))
     else:
         clone_repo(jupyterRepo, "jupyter", dir.name, keep_git=opts["keep_git"])
+    progress_bar.update(1)
 
     if opts["lectures_directory"]:
         shutil.copytree(opts["lectures_directory"], os.path.join(dir.name, "lectures"))
     else:
         clone_repo(lecturesRepo, "lectures", dir.name, keep_git=opts["keep_git"])
+    progress_bar.update(1)
 
     examples = os.path.join(dir.name, "practiceProblems")
     os.makedirs(examples, exist_ok=True)
@@ -1002,6 +1016,7 @@ def run(opts: dict, **kwargs):
         )
     else:
         _LOGGER.info("no example repos were specified, skipping...")
+    progress_bar.update(1)
 
     for example in opts["example_dir"]:
         target = examples
@@ -1010,6 +1025,7 @@ def run(opts: dict, **kwargs):
         shutil.copytree(example, target, dirs_exist_ok=True)
     else:
         _LOGGER.info("no example directories were specified, skipping...")
+    progress_bar.update(1)
 
     if motdFile:
         _LOGGER.info("Copying custom motd.txt file...")
@@ -1018,6 +1034,7 @@ def run(opts: dict, **kwargs):
         _LOGGER.info("Copying default motd.txt file...")
         with pkg_resources.path("builder.data", "motd.txt") as template:
             shutil.copy2(template, os.path.join(dir.name, "motd.txt"))
+    progress_bar.update(1)
 
     if opts["wiki_git_repo"] is not None:
         wikiRepo = Repository(
@@ -1029,24 +1046,34 @@ def run(opts: dict, **kwargs):
 
         if sshKeyFile:
             change_key_permissions(container, sshKeyFile)
+        progress_bar.set_description("Setting up wiki")
         set_wiki_contents(host, wikiRepo, port=port, keep_git=opts["keep_git"])
+        progress_bar.update(1)
     else:
         _LOGGER.info("wiki content repository has not been set. skipping...")
 
     set_wiki_title(host, opts["wiki_title"], port=port)
+    progress_bar.update(1)
     set_wiki_navigation_mode(host, opts["wiki_navigation"], port=port)
+    progress_bar.update(1)
     set_wiki_comments(host, opts["wiki_comments"], port=port)
+    progress_bar.update(1)
     dissable_api(host, port=port)
+    progress_bar.update(1)
 
+    progress_bar.set_description("Extracting setup up wiki")
     stop_container(container)
     if network:
         network.disconnect(container)
+    progress_bar.update(1)
 
     extract_db(container, dir.name)
+    progress_bar.update(1)
 
     delete_container(container)
     delete_volume(volume)
 
+    progress_bar.set_description("Building")
     if opts["multi_arch"]:
         _LOGGER.info("Starting multi platform build")
         build_multi_arch(
@@ -1066,16 +1093,19 @@ def run(opts: dict, **kwargs):
             base=opts["base"],
             static_url=opts["static_url"],
         )
-
         if opts["push"]:
             push_image(client, image)
 
+    progress_bar.update(1)
     cleanup_build(dir)
 
     if network:
         network.disconnect(this)
         network.remove()
+    progress_bar.update(1)
+    progress_bar.close()
 
+    print(f'Done building the image: {opts["tag"]}')
     _LOGGER.info("Done.")
 
 
