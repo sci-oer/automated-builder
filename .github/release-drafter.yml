@@ -1,11 +1,19 @@
 name-template: 'v$RESOLVED_VERSION 🌈'
 tag-template: 'v$RESOLVED_VERSION'
 categories:
+  - title: '💥💥 Breaking 💥💥'
+    labels:
+      - 'breaking'
+  - title: '⚠️ Deprecations ⚠️'
+    labels:
+      - 'deprecated'
+      - 'type: deprecation'
   - title: '🚀 Features'
     labels:
       - 'feature'
       - 'enhancement'
       - 'type: feature request'
+      - 'type: feature'
   - title: '🐛 Bug Fixes'
     labels:
       - 'fix'
@@ -13,7 +21,15 @@ categories:
       - 'bug'
       - 'type: bug'
   - title: '🧰 Maintenance'
-    label: 'chore'
+    collapse-after: 3
+    labels:
+      - 'chore'
+      - 'type: chore'
+  - title: '⬆️ Dependencies'
+    collapse-after: 3
+    labels:
+      - 'dependencies'
+      - 'type: dependencies'
 change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
 change-title-escapes: '\<*_&' # You can add # and @ to disable mentions, and add ` to disable code blocks.
 version-resolver:
