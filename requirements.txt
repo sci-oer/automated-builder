@@ -3,4 +3,5 @@ docker==6.0.1
 docopt==0.6.2
 GitPython==3.1.31
 requests==2.29.0
+tqdm==4.65.0
 pyreadline3==3.4.1; platform_system == 'Windows'
