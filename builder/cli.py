@@ -1001,13 +1001,6 @@ def run(opts: dict, **kwargs):
         _LOGGER.info("no example repos were specified, skipping...")
 
     for example in opts["example_dir"]:
-        print("DEBUG")
-        print(f"example: {example}")
-        print(f'len: {len(opts["example_dir"])}')
-        print(f"examples: {examples}")
-        print(f"base: {os.path.basename(example)}")
-        print("END")
-
         target = examples
         if len(opts["example_dir"]) > 1:
             target = os.path.join(examples.name, os.path.basename(example))
