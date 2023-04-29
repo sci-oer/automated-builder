@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.15.0](https://github.com/sci-oer/automated-builder/releases/v0.15.0) (2023-04-29)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.14.0...v0.15.0)
+
+**Implemented enhancements:**
+
+- Update changelog generation configuration and project lables [\#163](https://github.com/sci-oer/automated-builder/issues/163)
+
+**Merged pull requests:**
+
+- feat: add a simple progress indicator [\#189](https://github.com/sci-oer/automated-builder/pull/189) ([MarshallAsch](https://github.com/MarshallAsch))
+
 ## [v0.14.0](https://github.com/sci-oer/automated-builder/releases/v0.14.0) (2023-04-29)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.13.0...v0.14.0)
