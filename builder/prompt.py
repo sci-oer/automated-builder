@@ -5,6 +5,7 @@ import re
 from typing import Optional, List
 import readline
 
+
 def get_input(message: Optional[str] = None) -> str:
     return input(message)
 
