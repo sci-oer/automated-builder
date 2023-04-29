@@ -1,5 +1,31 @@
 # Changelog
 
+## [v0.14.0](https://github.com/sci-oer/automated-builder/releases/v0.14.0) (2023-04-29)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.13.0...v0.14.0)
+
+**Implemented enhancements:**
+
+- feat: be able to set the example and jupyer labs from directories [\#184](https://github.com/sci-oer/automated-builder/pull/184) ([MarshallAsch](https://github.com/MarshallAsch))
+- feat: add the rest of the cli options to the interactive prompt [\#183](https://github.com/sci-oer/automated-builder/pull/183) ([MarshallAsch](https://github.com/MarshallAsch))
+- fix: allow arrow keys to function during interactive input [\#182](https://github.com/sci-oer/automated-builder/pull/182) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Fixed bugs:**
+
+- fix: allow more than one example repository to be specified [\#186](https://github.com/sci-oer/automated-builder/pull/186) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Deprecated:**
+
+- Depreciate loading lecture content from a git repo [\#174](https://github.com/sci-oer/automated-builder/issues/174)
+- chore: add deprecation warning about the lectures-repo option [\#185](https://github.com/sci-oer/automated-builder/pull/185) ([MarshallAsch](https://github.com/MarshallAsch))
+
+**Merged pull requests:**
+
+- feat\(docs\): add more sections to the release notes to include breaking changes [\#188](https://github.com/sci-oer/automated-builder/pull/188) ([MarshallAsch](https://github.com/MarshallAsch))
+- chore: auto label all renovate prs with the dependancy label [\#187](https://github.com/sci-oer/automated-builder/pull/187) ([MarshallAsch](https://github.com/MarshallAsch))
+- chore\(deps\): update dependency requests to v2.29.0 [\#181](https://github.com/sci-oer/automated-builder/pull/181) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update pypa/gh-action-pypi-publish action to v1.8.5 [\#180](https://github.com/sci-oer/automated-builder/pull/180) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [v0.13.0](https://github.com/sci-oer/automated-builder/releases/v0.13.0) (2023-02-25)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.12.0...v0.13.0)
