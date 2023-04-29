@@ -863,7 +863,7 @@ def get_real_file_path(container: Container, fileName: str) -> str:
 def run(opts: dict, **kwargs):
     if opts["lectures_repo"] is not None:
         _LOGGER.warning(
-            "deprecated option `--lectures-repo`, use `--lectures-directory` instead of a git repository. This will be removed in a future version."
+            "deprecated option `--lectures-repo`, use `--lectures-directory` instead. This option will be removed in a future version."
         )
     # Checking incompatible arguments
 
