@@ -76,7 +76,7 @@ from docopt import docopt
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
-from builder.prompt import prompt, prompt_list, yesno
+from builder.prompt import prompt, prompt_list, yesno, prompt_options
 
 try:
     from git import GitCommandError, Repo  # noqa: I900
@@ -181,10 +181,13 @@ def ask_interactive(opts: dict) -> dict:
         "Should a the latest base image be fetched?",
         default="no" if input["no_pull"] else "yes",
     )
-
     input["push"]: bool = yesno(
         "Do you want to push the generated image to dockerhub?",
         default="yes" if input["push"] else "no",
+    )
+    input["multi_arch"]: bool = yesno(
+        "Do you want to build the image for multiple CPU architectures?",
+        default="yes" if input["multi_arch"] else "no",
     )
 
     print("")
@@ -213,6 +216,15 @@ def ask_interactive(opts: dict) -> dict:
     input["wiki_git_branch"]: str = prompt(
         "Enter the branch name for the wiki repository:",
         default=input["wiki_git_branch"],
+    )
+    input["wiki_comments"]: str = yesno(
+        "Should commenting be enabled for the wiki?",
+        default="no" if input["wiki_comments"] else "yes",
+    )
+    input["wiki_navigation"]: str = prompt_options(
+        "The type of navigation that should be used in the wiki",
+        options=["TREE", "NONE"],
+        default=input["wiki_navigation"],
     )
 
     isSSH = yesno("Do you want to clone the wiki repository using ssh?", default="yes")
@@ -245,9 +257,23 @@ def ask_interactive(opts: dict) -> dict:
         "Enter the directory that contains the Jupyter Lecture video files (leave blank if not being used)",
         default=input["lectures_directory"],
     )
-
     input["example"]: List[str] = prompt_list(
         "Enter a git repository that contains an example project"
+    )
+
+    print("")
+    print("## Other options (the defaults are probably fine).")
+    input["motd_file"]: str = prompt(
+        "The path to the file that contains the message to be printed when the container starts",
+        default=input["motd_file"],
+    )
+    input["static_url"]: str = prompt(
+        "The optional external url to service the static lectures content if it is not included in the image",
+        default=input["static_url"],
+    )
+    input["static_url"]: str = prompt(
+        "The optional external url to service the static lectures content if it is not included in the image",
+        default=input["static_url"],
     )
 
     return input

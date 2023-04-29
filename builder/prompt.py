@@ -75,3 +75,41 @@ def yesno(message: str, default: Optional[str] = None, suffix: str = " ") -> boo
             return True
         elif re.match("^(n)(o)?$", response, re.IGNORECASE):
             return False
+
+
+def prompt_options(
+    message: str, options: List[str], default: Optional[str] = None, suffix: str = ": "
+) -> bool:
+    """Prompt user to select an option from a list."""
+    default_index = 0
+    if default == None:
+        default_index = 0
+    elif default not in options:
+        raise ValueError("default must be in the list of options.")
+    else:
+        default_index = options.index(default)
+
+    prompt_text = f"{message}{suffix}"
+
+    def print_options(index: int, options: List[str]):
+        print("options (the default option is marked with a *):")
+        for index, value in enumerate(options):
+            print(f" {index}{' ' if default_index != index else '*'}. {value}")
+
+    while True:
+        print_options(default_index, options)
+        response = get_input(prompt_text).strip()
+
+        selection = default_index
+        try:
+            if response != "":
+                selection = int(response)
+        except:
+            selection = -1
+
+        if selection < 0 or selection > len(options):
+            print(
+                "Invalid option: {response} must be one of the option numbers in the list."
+            )
+        else:
+            return options[selection]
