@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.16.0](https://github.com/sci-oer/automated-builder/releases/v0.16.0) (2023-07-27)
+
+[Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.15.0...v0.16.0)
+
+**Merged pull requests:**
+
+- chore\(deps\): update dependency gitpython to v3.1.32 [\#195](https://github.com/sci-oer/automated-builder/pull/195) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update dependency requests to v2.31.0 \[security\] [\#194](https://github.com/sci-oer/automated-builder/pull/194) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): bump requests from 2.29.0 to 2.31.0 [\#193](https://github.com/sci-oer/automated-builder/pull/193) ([dependabot[bot]](https://github.com/apps/dependabot))
+- chore\(deps\): update dependency docker to v6.1.3 [\#192](https://github.com/sci-oer/automated-builder/pull/192) ([renovate[bot]](https://github.com/apps/renovate))
+- chore\(deps\): update pypa/gh-action-pypi-publish action to v1.8.8 [\#190](https://github.com/sci-oer/automated-builder/pull/190) ([renovate[bot]](https://github.com/apps/renovate))
+
 ## [v0.15.0](https://github.com/sci-oer/automated-builder/releases/v0.15.0) (2023-04-29)
 
 [Full Changelog](https://github.com/sci-oer/automated-builder/compare/v0.14.0...v0.15.0)
