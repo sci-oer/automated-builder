@@ -28,7 +28,7 @@ jobs:
 
     - name: Cache binaries
       id: cache-bin
-      uses: actions/cache@v3
+      uses: actions/cache@v6
       env:
         cache-name: cache-semver
       with:
